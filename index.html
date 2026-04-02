@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sala Riunioni — Spedimar SAGL</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', 'Segoe UI', sans-serif; background: #FAFBFD; min-height: 100vh; }
+    
+    .header {
+      background: linear-gradient(135deg, #1565C0, #0D47A1);
+      padding: 24px 28px; margin: 20px; border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(21,101,192,0.25);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    }
+    .header h1 { color: white; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+    .header .subtitle { color: rgba(255,255,255,0.75); font-size: 13px; margin-top: 4px; }
+    .header .status { font-size: 12px; color: rgba(255,255,255,0.7); background: rgba(46,125,50,0.3); padding: 4px 10px; border-radius: 20px; margin-left: 10px; }
+    
+    .nav-controls { display: flex; align-items: center; gap: 6px; }
+    .legend { display: flex; align-items: center; gap: 5px; margin-right: 12px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+    .legend span { color: rgba(255,255,255,0.8); font-size: 12px; }
+    .nav-btn {
+      background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 10px; padding: 7px 12px; cursor: pointer; font-size: 16px; font-weight: 600;
+      transition: background 0.15s;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.25); }
+    .nav-btn.today { font-size: 12px; padding: 7px 14px; }
+
+    .calendar {
+      margin: 0 20px 20px; background: white; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.06); border: 1px solid #E2E8F0;
+    }
+    .cal-grid { display: grid; grid-template-columns: 64px repeat(5, 1fr); }
+    .cal-header-empty {
+      padding: 12px 6px; background: #F8FAFC;
+      border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0;
+    }
+    .cal-header {
+      padding: 12px 8px; text-align: center; background: #F8FAFC;
+      border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0;
+    }
+    .cal-header:last-child { border-right: none; }
+    .cal-header.today { background: #E3F2FD; border-bottom: 3px solid #1565C0; }
+    .cal-header .day-name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748B; }
+    .cal-header.today .day-name { color: #1565C0; }
+    .cal-header .day-num { font-size: 18px; font-weight: 700; color: #1A1A2E; margin-top: 2px; }
+    .cal-header.today .day-num { color: #1565C0; }
+
+    .time-label {
+      padding: 0 8px; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 500; color: #64748B;
+      background: #FAFBFD; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0;
+      min-height: 48px;
+    }
+    .slot {
+      min-height: 48px; position: relative; border-bottom: 1px solid #E2E8F0;
+      border-right: 1px solid #E2E8F0; cursor: pointer; transition: background 0.15s;
+    }
+    .slot:nth-child(6n) { border-right: none; }
+    .slot.free { background: #E8F5E9; }
+    .slot.free:hover { background: #C8E6C9; }
+    .slot.busy { background: #FFCDD2; }
+
+    .booking-card {
+      position: absolute; top: 3px; left: 3px; right: 3px;
+      background: linear-gradient(135deg, #E53935, #C62828);
+      border-radius: 7px; padding: 6px 8px; color: white; overflow: hidden; z-index: 2;
+      box-shadow: 0 2px 8px rgba(229,57,53,0.3); cursor: pointer;
+    }
+    .booking-card .title { font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .booking-card .info { font-size: 10px; opacity: 0.9; margin-top: 1px; }
+
+    /* Modal */
+    .overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal {
+      background: white; border-radius: 20px; padding: 28px; width: 100%; max-width: 420;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.2); animation: fadeIn 0.2s ease;
+    }
+    .modal h2 { font-size: 21px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px; }
+    .modal .modal-sub { font-size: 14px; color: #64748B; margin-bottom: 20px; }
+    .modal label { display: block; font-size: 12px; font-weight: 600; color: #64748B; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .modal input {
+      width: 100%; padding: 11px 14px; border: 2px solid #E2E8F0; border-radius: 10px;
+      font-size: 15px; margin-bottom: 14px; outline: none; font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .modal input:focus { border-color: #1565C0; }
+    .duration-btns { display: flex; gap: 8px; margin-bottom: 24px; }
+    .dur-btn {
+      flex: 1; padding: 10px; border: 2px solid #E2E8F0; border-radius: 10px;
+      background: white; color: #1A1A2E; font-weight: 600; font-size: 14px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .dur-btn.active { border-color: #1565C0; background: #E3F2FD; color: #1565C0; }
+    .modal-actions { display: flex; gap: 10px; }
+    .btn-cancel {
+      flex: 1; padding: 13px; border: 2px solid #E2E8F0; border-radius: 12px;
+      background: white; color: #1A1A2E; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .btn-book {
+      flex: 2; padding: 13px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #1565C0, #0D47A1); color: white;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(21,101,192,0.3); transition: opacity 0.15s;
+    }
+    .btn-book:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-delete {
+      flex: 2; padding: 13px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #E53935, #C62828); color: white;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(229,57,53,0.3);
+    }
+    .detail-card {
+      background: linear-gradient(135deg, #E53935, #C62828);
+      border-radius: 12px; padding: 18px; color: white; margin-bottom: 20px;
+    }
+    .detail-card .title { font-size: 19px; font-weight: 700; }
+    .detail-card .info { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+
+    .toast {
+      position: fixed; top: 24px; right: 24px; z-index: 2000;
+      padding: 14px 24px; border-radius: 12px; color: white; font-weight: 600; font-size: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2); animation: slideIn 0.3s ease;
+    }
+    .toast.success { background: #2E7D32; }
+    .toast.error { background: #C62828; }
+
+    .loading { text-align: center; padding: 80px 20px; color: #64748B; }
+    .loading .icon { font-size: 40px; margin-bottom: 12px; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    @media (max-width: 640px) {
+      .header { padding: 16px; margin: 12px; }
+      .header h1 { font-size: 20px; }
+      .calendar { margin: 0 12px 12px; }
+      .cal-grid { grid-template-columns: 48px repeat(5, 1fr); }
+      .cal-header .day-name { font-size: 9px; }
+      .cal-header .day-num { font-size: 14px; }
+      .time-label { font-size: 10px; padding: 0 4px; }
+      .slot { min-height: 40px; }
+      .booking-card { padding: 4px 5px; }
+      .booking-card .title { font-size: 10px; }
+      .booking-card .info { font-size: 8px; }
+      .modal { margin: 12px; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// =====================================================
+// FIREBASE CONFIG
+// =====================================================
+const DB_URL = "https://sala-riunioni-2121b-default-rtdb.europe-west1.firebasedatabase.app";
+
+// =====================================================
+// STATE
+// =====================================================
+let state = {
+  weekOffset: 0,
+  bookings: {},
+  modal: null,       // { dayIdx, hour }
+  selected: null,    // booking detail
+  form: { title: "", person: "", duration: 1 },
+  loading: true,
+  syncing: false,
+  toast: null,
+};
+
+const HOURS = Array.from({ length: 11 }, (_, i) => i + 8);
+const DAYS_IT = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"];
+
+function getWeekDates(offset) {
+  const now = new Date();
+  const dow = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7);
+  return DAYS_IT.map((name, i) => {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    return {
+      name,
+      date: d,
+      label: d.getDate() + "/" + (d.getMonth() + 1),
+      key: d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"),
+    };
+  });
+}
+
+function isToday(date) {
+  const t = new Date();
+  return date.getDate() === t.getDate() && date.getMonth() === t.getMonth() && date.getFullYear() === t.getFullYear();
+}
+
+// =====================================================
+// FIREBASE REST API
+// =====================================================
+async function fbGet(path) {
+  try {
+    const r = await fetch(DB_URL + "/" + path + ".json");
+    return await r.json();
+  } catch (e) { console.error(e); return null; }
+}
+
+async function fbPut(path, data) {
+  try {
+    await fetch(DB_URL + "/" + path + ".json", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function fbDelete(path) {
+  try { await fetch(DB_URL + "/" + path + ".json", { method: "DELETE" }); }
+  catch (e) { console.error(e); }
+}
+
+// =====================================================
+// DATA LOADING
+// =====================================================
+async function loadWeek() {
+  state.loading = true;
+  render();
+  const dates = getWeekDates(state.weekOffset);
+  const bookings = {};
+  for (const day of dates) {
+    const data = await fbGet("bookings/" + day.key);
+    if (data) {
+      Object.entries(data).forEach(([hour, b]) => {
+        bookings[day.key + "/" + hour] = b;
+      });
+    }
+  }
+  state.bookings = bookings;
+  state.loading = false;
+  render();
+}
+
+function getBooking(dates, dayIdx, hour) {
+  const dk = dates[dayIdx]?.key;
+  if (!dk) return null;
+  const direct = state.bookings[dk + "/" + hour];
+  if (direct && direct.startHour === hour) return direct;
+  for (let h = hour - 1; h >= 8; h--) {
+    const b = state.bookings[dk + "/" + h];
+    if (b && b.startHour === h && hour < h + b.duration) return b;
+  }
+  return null;
+}
+
+function isStartHour(dates, dayIdx, hour) {
+  const dk = dates[dayIdx]?.key;
+  const b = state.bookings[dk + "/" + hour];
+  return b && b.startHour === hour ? b : null;
+}
+
+// =====================================================
+// ACTIONS
+// =====================================================
+function showToast(msg, type) {
+  state.toast = { message: msg, type: type || "success" };
+  render();
+  setTimeout(() => { state.toast = null; render(); }, 3000);
+}
+
+async function handleBook() {
+  const { modal, form } = state;
+  if (!form.title || !form.person) return;
+  const dates = getWeekDates(state.weekOffset);
+  const dk = dates[modal.dayIdx].key;
+
+  for (let h = modal.hour; h < modal.hour + form.duration; h++) {
+    if (getBooking(dates, modal.dayIdx, h)) {
+      showToast("Conflitto — slot già occupato!", "error");
+      return;
+    }
+  }
+
+  state.syncing = true; render();
+  const data = { title: form.title, person: form.person, duration: form.duration, startHour: modal.hour, createdAt: new Date().toISOString() };
+  for (let h = modal.hour; h < modal.hour + form.duration; h++) {
+    await fbPut("bookings/" + dk + "/" + h, data);
+    state.bookings[dk + "/" + h] = data;
+  }
+  state.syncing = false;
+  state.modal = null;
+  showToast("Prenotazione confermata!");
+}
+
+async function handleDelete() {
+  const { selected } = state;
+  const dates = getWeekDates(state.weekOffset);
+  const dk = dates[selected.dayIdx].key;
+  state.syncing = true; render();
+  for (let h = selected.startHour; h < selected.startHour + selected.duration; h++) {
+    await fbDelete("bookings/" + dk + "/" + h);
+    delete state.bookings[dk + "/" + h];
+  }
+  state.syncing = false;
+  state.selected = null;
+  showToast("Prenotazione eliminata!");
+}
+
+// =====================================================
+// RENDER
+// =====================================================
+function render() {
+  const dates = getWeekDates(state.weekOffset);
+  const totalSlots = HOURS.length * 5;
+  let freeSlots = 0;
+  dates.forEach((d, di) => { HOURS.forEach(h => { if (!getBooking(dates, di, h)) freeSlots++; }); });
+  const pct = Math.round(((totalSlots - freeSlots) / totalSlots) * 100);
+
+  let html = "";
+
+  // Toast
+  if (state.toast) {
+    html += '<div class="toast ' + state.toast.type + '">' + (state.toast.type === "error" ? "⚠️ " : "✅ ") + state.toast.message + '</div>';
+  }
+
+  // Header
+  html += '<div class="header"><div>';
+  html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
+  html += '<h1>🏢 Sala Riunioni Chiasso</h1>';
+  html += state.syncing
+    ? '<span class="status" style="background:rgba(255,255,255,0.15)">⏳ Sincronizzazione...</span>'
+    : '<span class="status">🟢 Online</span>';
+  html += '</div>';
+  html += '<p class="subtitle">Spedimar SAGL · ' + freeSlots + ' slot liberi · Occupazione: ' + pct + '%</p>';
+  html += '</div>';
+  html += '<div class="nav-controls">';
+  html += '<div class="legend">';
+  html += '<div class="legend-dot" style="background:#E8F5E9;border:1px solid #A5D6A7"></div><span>Libero</span>';
+  html += '<div class="legend-dot" style="background:#FFCDD2;border:1px solid #EF9A9A;margin-left:6px"></div><span>Occupato</span>';
+  html += '</div>';
+  html += '<button class="nav-btn" onclick="changeWeek(-1)">‹</button>';
+  html += '<button class="nav-btn today" onclick="changeWeek(0)">Oggi</button>';
+  html += '<button class="nav-btn" onclick="changeWeek(1)">›</button>';
+  html += '</div></div>';
+
+  if (state.loading) {
+    html += '<div class="loading"><div class="icon">⏳</div><div>Caricamento prenotazioni...</div></div>';
+  } else {
+    // Calendar
+    html += '<div class="calendar"><div class="cal-grid">';
+    html += '<div class="cal-header-empty"></div>';
+    dates.forEach((d, i) => {
+      const td = isToday(d.date) ? " today" : "";
+      html += '<div class="cal-header' + td + '">';
+      html += '<div class="day-name">' + d.name + '</div>';
+      html += '<div class="day-num">' + d.label + '</div>';
+      html += '</div>';
+    });
+
+    HOURS.forEach(hour => {
+      html += '<div class="time-label">' + hour + ':00</div>';
+      dates.forEach((d, di) => {
+        const booking = getBooking(dates, di, hour);
+        const start = isStartHour(dates, di, hour);
+        const cls = booking ? "slot busy" : "slot free";
+        html += '<div class="' + cls + '" onclick="cellClick(' + di + ',' + hour + ')">';
+        if (start) {
+          const h = start.duration * 48 - 6;
+          html += '<div class="booking-card" style="height:' + h + 'px">';
+          html += '<div class="title">' + esc(start.title) + '</div>';
+          html += '<div class="info">' + esc(start.person);
+          if (start.duration > 1) html += ' · ' + start.startHour + ':00–' + (start.startHour + start.duration) + ':00';
+          html += '</div></div>';
+        }
+        html += '</div>';
+      });
+    });
+    html += '</div></div>';
+  }
+
+  // Booking Modal
+  if (state.modal) {
+    const m = state.modal;
+    html += '<div class="overlay" onclick="closeModal()">';
+    html += '<div class="modal" onclick="event.stopPropagation()">';
+    html += '<h2>✏️ Nuova Prenotazione</h2>';
+    html += '<p class="modal-sub">' + dates[m.dayIdx].name + ' ' + dates[m.dayIdx].label + ' · ore ' + m.hour + ':00</p>';
+    html += '<label>Motivo della riunione</label>';
+    html += '<input type="text" id="inp-title" placeholder="Es. Call con cliente" value="' + esc(state.form.title) + '" oninput="updateForm(\'title\', this.value)" autofocus />';
+    html += '<label>Prenotato da</label>';
+    html += '<input type="text" id="inp-person" placeholder="Es. Marco Rossi" value="' + esc(state.form.person) + '" oninput="updateForm(\'person\', this.value)" />';
+    html += '<label>Durata</label><div class="duration-btns">';
+    [1,2,3,4].forEach(d => {
+      const act = state.form.duration === d ? " active" : "";
+      html += '<button class="dur-btn' + act + '" onclick="updateForm(\'duration\',' + d + ')">' + d + 'h</button>';
+    });
+    html += '</div>';
+    html += '<div class="modal-actions">';
+    html += '<button class="btn-cancel" onclick="closeModal()">Annulla</button>';
+    const dis = (!state.form.title || !state.form.person || state.syncing) ? " disabled" : "";
+    html += '<button class="btn-book"' + dis + ' onclick="handleBook()">' + (state.syncing ? '⏳ Salvo...' : '✓ Prenota') + '</button>';
+    html += '</div></div></div>';
+  }
+
+  // Detail Modal
+  if (state.selected) {
+    const s = state.selected;
+    html += '<div class="overlay" onclick="closeDetail()">';
+    html += '<div class="modal" onclick="event.stopPropagation()">';
+    html += '<div class="detail-card">';
+    html += '<div class="title">' + esc(s.title) + '</div>';
+    html += '<div class="info">' + (dates[s.dayIdx]?.name || "") + ' · ' + s.startHour + ':00 – ' + (s.startHour + s.duration) + ':00</div>';
+    html += '<div class="info">👤 ' + esc(s.person) + '</div>';
+    html += '</div>';
+    html += '<div class="modal-actions">';
+    html += '<button class="btn-cancel" onclick="closeDetail()">Chiudi</button>';
+    html += '<button class="btn-delete" onclick="handleDelete()">' + (state.syncing ? '⏳ Elimino...' : '🗑 Elimina') + '</button>';
+    html += '</div></div></div>';
+  }
+
+  document.getElementById("app").innerHTML = html;
+}
+
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// =====================================================
+// EVENT HANDLERS
+// =====================================================
+function changeWeek(dir) {
+  if (dir === 0) state.weekOffset = 0;
+  else state.weekOffset += dir;
+  loadWeek();
+}
+
+function cellClick(dayIdx, hour) {
+  const dates = getWeekDates(state.weekOffset);
+  const booking = getBooking(dates, dayIdx, hour);
+  if (booking) {
+    state.selected = { ...booking, dayIdx };
+    render();
+  } else {
+    state.modal = { dayIdx, hour };
+    state.form = { title: "", person: "", duration: 1 };
+    render();
+    setTimeout(() => { const el = document.getElementById("inp-title"); if (el) el.focus(); }, 50);
+  }
+}
+
+function updateForm(key, val) {
+  state.form[key] = val;
+  if (key === "duration") render();
+}
+
+function closeModal() { state.modal = null; render(); }
+function closeDetail() { state.selected = null; render(); }
+
+// =====================================================
+// INIT
+// =====================================================
+loadWeek();
+
+// Auto-refresh every 30 seconds
+setInterval(async () => {
+  if (state.modal || state.selected || state.syncing) return;
+  const dates = getWeekDates(state.weekOffset);
+  const bookings = {};
+  for (const day of dates) {
+    const data = await fbGet("bookings/" + day.key);
+    if (data) Object.entries(data).forEach(([h, b]) => { bookings[day.key + "/" + h] = b; });
+  }
+  state.bookings = bookings;
+  render();
+}, 30000);
+</script>
+</body>
+</html>
