@@ -56,11 +56,21 @@
       padding: 0 8px; display: flex; align-items: center; justify-content: center;
       font-size: 12px; font-weight: 500; color: #64748B;
       background: #FAFBFD; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0;
-      min-height: 48px;
+      min-height: 32px;
+    }
+    .time-label.half {
+      border-bottom: 1px dashed #E2E8F0;
+      min-height: 32px;
+      color: #94A3B8;
+      font-size: 11px;
+      font-weight: 400;
     }
     .slot {
-      min-height: 48px; position: relative; border-bottom: 1px solid #E2E8F0;
+      min-height: 32px; position: relative; border-bottom: 1px solid #E2E8F0;
       border-right: 1px solid #E2E8F0; cursor: pointer; transition: background 0.15s;
+    }
+    .slot.half-slot {
+      border-bottom: 1px dashed #E2E8F0;
     }
     .slot:nth-child(6n) { border-right: none; }
     .slot.free { background: #E8F5E9; }
@@ -148,8 +158,9 @@
       .cal-grid { grid-template-columns: 48px repeat(5, 1fr); }
       .cal-header .day-name { font-size: 9px; }
       .cal-header .day-num { font-size: 14px; }
-      .time-label { font-size: 10px; padding: 0 4px; }
-      .slot { min-height: 40px; }
+      .time-label { font-size: 10px; padding: 0 4px; min-height: 28px; }
+      .time-label.half { min-height: 28px; }
+      .slot { min-height: 28px; }
       .booking-card { padding: 4px 5px; }
       .booking-card .title { font-size: 10px; }
       .booking-card .info { font-size: 8px; }
@@ -173,16 +184,29 @@ const DB_URL = "https://sala-riunioni-2121b-default-rtdb.europe-west1.firebaseda
 let state = {
   weekOffset: 0,
   bookings: {},
-  modal: null,       // { dayIdx, hour }
+  modal: null,       // { dayIdx, slot }
   selected: null,    // booking detail
-  form: { title: "", person: "", duration: 1 },
+  form: { title: "", person: "", duration: 2 },  // 2 slots = 1h default
   loading: true,
   syncing: false,
   toast: null,
 };
 
-const HOURS = Array.from({ length: 11 }, (_, i) => i + 8);
+// Slot indices: 0 = 08:00, 1 = 08:30, 2 = 09:00, ... up to 18:00 (22 slots)
+const SLOT_COUNT = 22;
+const SLOTS = Array.from({ length: SLOT_COUNT }, (_, i) => i);
 const DAYS_IT = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"];
+
+function slotToTime(slotIdx) {
+  const totalMinutes = 8 * 60 + slotIdx * 30;
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+
+function isHourStart(slotIdx) {
+  return slotIdx % 2 === 0; // even slots are on the hour (08:00, 09:00...)
+}
 
 function getWeekDates(offset) {
   const now = new Date();
@@ -251,22 +275,22 @@ async function loadWeek() {
   render();
 }
 
-function getBooking(dates, dayIdx, hour) {
+function getBooking(dates, dayIdx, slot) {
   const dk = dates[dayIdx]?.key;
   if (!dk) return null;
-  const direct = state.bookings[dk + "/" + hour];
-  if (direct && direct.startHour === hour) return direct;
-  for (let h = hour - 1; h >= 8; h--) {
-    const b = state.bookings[dk + "/" + h];
-    if (b && b.startHour === h && hour < h + b.duration) return b;
+  const direct = state.bookings[dk + "/" + slot];
+  if (direct && direct.startSlot === slot) return direct;
+  for (let s = slot - 1; s >= 0; s--) {
+    const b = state.bookings[dk + "/" + s];
+    if (b && b.startSlot === s && slot < s + b.duration) return b;
   }
   return null;
 }
 
-function isStartHour(dates, dayIdx, hour) {
+function isStartSlot(dates, dayIdx, slot) {
   const dk = dates[dayIdx]?.key;
-  const b = state.bookings[dk + "/" + hour];
-  return b && b.startHour === hour ? b : null;
+  const b = state.bookings[dk + "/" + slot];
+  return b && b.startSlot === slot ? b : null;
 }
 
 // =====================================================
@@ -284,18 +308,18 @@ async function handleBook() {
   const dates = getWeekDates(state.weekOffset);
   const dk = dates[modal.dayIdx].key;
 
-  for (let h = modal.hour; h < modal.hour + form.duration; h++) {
-    if (getBooking(dates, modal.dayIdx, h)) {
+  for (let s = modal.slot; s < modal.slot + form.duration; s++) {
+    if (getBooking(dates, modal.dayIdx, s)) {
       showToast("Conflitto — slot già occupato!", "error");
       return;
     }
   }
 
   state.syncing = true; render();
-  const data = { title: form.title, person: form.person, duration: form.duration, startHour: modal.hour, createdAt: new Date().toISOString() };
-  for (let h = modal.hour; h < modal.hour + form.duration; h++) {
-    await fbPut("bookings/" + dk + "/" + h, data);
-    state.bookings[dk + "/" + h] = data;
+  const data = { title: form.title, person: form.person, duration: form.duration, startSlot: modal.slot, createdAt: new Date().toISOString() };
+  for (let s = modal.slot; s < modal.slot + form.duration; s++) {
+    await fbPut("bookings/" + dk + "/" + s, data);
+    state.bookings[dk + "/" + s] = data;
   }
   state.syncing = false;
   state.modal = null;
@@ -307,9 +331,9 @@ async function handleDelete() {
   const dates = getWeekDates(state.weekOffset);
   const dk = dates[selected.dayIdx].key;
   state.syncing = true; render();
-  for (let h = selected.startHour; h < selected.startHour + selected.duration; h++) {
-    await fbDelete("bookings/" + dk + "/" + h);
-    delete state.bookings[dk + "/" + h];
+  for (let s = selected.startSlot; s < selected.startSlot + selected.duration; s++) {
+    await fbDelete("bookings/" + dk + "/" + s);
+    delete state.bookings[dk + "/" + s];
   }
   state.syncing = false;
   state.selected = null;
@@ -321,9 +345,9 @@ async function handleDelete() {
 // =====================================================
 function render() {
   const dates = getWeekDates(state.weekOffset);
-  const totalSlots = HOURS.length * 5;
+  const totalSlots = SLOT_COUNT * 5;
   let freeSlots = 0;
-  dates.forEach((d, di) => { HOURS.forEach(h => { if (!getBooking(dates, di, h)) freeSlots++; }); });
+  dates.forEach((d, di) => { SLOTS.forEach(s => { if (!getBooking(dates, di, s)) freeSlots++; }); });
   const pct = Math.round(((totalSlots - freeSlots) / totalSlots) * 100);
 
   let html = "";
@@ -367,19 +391,24 @@ function render() {
       html += '</div>';
     });
 
-    HOURS.forEach(hour => {
-      html += '<div class="time-label">' + hour + ':00</div>';
+    SLOTS.forEach(slot => {
+      const hourStart = isHourStart(slot);
+      const timeLabel = slotToTime(slot);
+      const labelClass = hourStart ? 'time-label' : 'time-label half';
+      html += '<div class="' + labelClass + '">' + timeLabel + '</div>';
       dates.forEach((d, di) => {
-        const booking = getBooking(dates, di, hour);
-        const start = isStartHour(dates, di, hour);
-        const cls = booking ? "slot busy" : "slot free";
-        html += '<div class="' + cls + '" onclick="cellClick(' + di + ',' + hour + ')">';
+        const booking = getBooking(dates, di, slot);
+        const start = isStartSlot(dates, di, slot);
+        const slotClass = booking ? "slot busy" : "slot free";
+        const halfClass = hourStart ? "" : " half-slot";
+        html += '<div class="' + slotClass + halfClass + '" onclick="cellClick(' + di + ',' + slot + ')">';
         if (start) {
-          const h = start.duration * 48 - 6;
+          const h = start.duration * 32 - 4;
+          const endTime = slotToTime(start.startSlot + start.duration);
+          const startTime = slotToTime(start.startSlot);
           html += '<div class="booking-card" style="height:' + h + 'px">';
           html += '<div class="title">' + esc(start.title) + '</div>';
-          html += '<div class="info">' + esc(start.person);
-          if (start.duration > 1) html += ' · ' + start.startHour + ':00–' + (start.startHour + start.duration) + ':00';
+          html += '<div class="info">' + esc(start.person) + ' · ' + startTime + '–' + endTime;
           html += '</div></div>';
         }
         html += '</div>';
@@ -394,15 +423,23 @@ function render() {
     html += '<div class="overlay" onclick="closeModal()">';
     html += '<div class="modal" onclick="event.stopPropagation()">';
     html += '<h2>✏️ Nuova Prenotazione</h2>';
-    html += '<p class="modal-sub">' + dates[m.dayIdx].name + ' ' + dates[m.dayIdx].label + ' · ore ' + m.hour + ':00</p>';
+    html += '<p class="modal-sub">' + dates[m.dayIdx].name + ' ' + dates[m.dayIdx].label + ' · ore ' + slotToTime(m.slot) + '</p>';
     html += '<label>Motivo della riunione</label>';
     html += '<input type="text" id="inp-title" placeholder="Es. Call con cliente" value="' + esc(state.form.title) + '" oninput="updateForm(\'title\', this.value)" autofocus />';
     html += '<label>Prenotato da</label>';
     html += '<input type="text" id="inp-person" placeholder="Es. Marco Rossi" value="' + esc(state.form.person) + '" oninput="updateForm(\'person\', this.value)" />';
     html += '<label>Durata</label><div class="duration-btns">';
-    [1,2,3,4].forEach(d => {
-      const act = state.form.duration === d ? " active" : "";
-      html += '<button class="dur-btn' + act + '" onclick="updateForm(\'duration\',' + d + ')">' + d + 'h</button>';
+    // Duration in slots: 1=30min, 2=1h, 3=1h30, 4=2h, 6=3h, 8=4h
+    [
+      { slots: 1, label: "30min" },
+      { slots: 2, label: "1h" },
+      { slots: 3, label: "1h30" },
+      { slots: 4, label: "2h" },
+      { slots: 6, label: "3h" },
+      { slots: 8, label: "4h" },
+    ].forEach(d => {
+      const act = state.form.duration === d.slots ? " active" : "";
+      html += '<button class="dur-btn' + act + '" onclick="updateForm(\'duration\',' + d.slots + ')">' + d.label + '</button>';
     });
     html += '</div>';
     html += '<div class="modal-actions">';
@@ -419,7 +456,7 @@ function render() {
     html += '<div class="modal" onclick="event.stopPropagation()">';
     html += '<div class="detail-card">';
     html += '<div class="title">' + esc(s.title) + '</div>';
-    html += '<div class="info">' + (dates[s.dayIdx]?.name || "") + ' · ' + s.startHour + ':00 – ' + (s.startHour + s.duration) + ':00</div>';
+    html += '<div class="info">' + (dates[s.dayIdx]?.name || "") + ' · ' + slotToTime(s.startSlot) + ' – ' + slotToTime(s.startSlot + s.duration) + '</div>';
     html += '<div class="info">👤 ' + esc(s.person) + '</div>';
     html += '</div>';
     html += '<div class="modal-actions">';
@@ -442,15 +479,15 @@ function changeWeek(dir) {
   loadWeek();
 }
 
-function cellClick(dayIdx, hour) {
+function cellClick(dayIdx, slot) {
   const dates = getWeekDates(state.weekOffset);
-  const booking = getBooking(dates, dayIdx, hour);
+  const booking = getBooking(dates, dayIdx, slot);
   if (booking) {
     state.selected = { ...booking, dayIdx };
     render();
   } else {
-    state.modal = { dayIdx, hour };
-    state.form = { title: "", person: "", duration: 1 };
+    state.modal = { dayIdx, slot };
+    state.form = { title: "", person: "", duration: 2 };
     render();
     setTimeout(() => { const el = document.getElementById("inp-title"); if (el) el.focus(); }, 50);
   }
