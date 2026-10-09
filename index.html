@@ -1,523 +1,1118 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sala Riunioni — Spedimar SAGL</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'DM Sans', 'Segoe UI', sans-serif; background: #FAFBFD; min-height: 100vh; }
-    
-    .header {
-      background: linear-gradient(135deg, #1565C0, #0D47A1);
-      padding: 24px 28px; margin: 20px; border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(21,101,192,0.25);
-      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
-    }
-    .header h1 { color: white; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-    .header .subtitle { color: rgba(255,255,255,0.75); font-size: 13px; margin-top: 4px; }
-    .header .status { font-size: 12px; color: rgba(255,255,255,0.7); background: rgba(46,125,50,0.3); padding: 4px 10px; border-radius: 20px; margin-left: 10px; }
-    
-    .nav-controls { display: flex; align-items: center; gap: 6px; }
-    .legend { display: flex; align-items: center; gap: 5px; margin-right: 12px; }
-    .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-    .legend span { color: rgba(255,255,255,0.8); font-size: 12px; }
-    .nav-btn {
-      background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
-      border-radius: 10px; padding: 7px 12px; cursor: pointer; font-size: 16px; font-weight: 600;
-      transition: background 0.15s;
-    }
-    .nav-btn:hover { background: rgba(255,255,255,0.25); }
-    .nav-btn.today { font-size: 12px; padding: 7px 14px; }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Sala Riunioni · Spedimar</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b3d91'/%3E%3Crect x='7' y='9' width='18' height='16' rx='2' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M7 14h18M12 6v5M20 6v5' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.28.0/lib/msal-browser.min.js"
+        integrity="sha384-EROj+zKZWlcPA7qutF5FClOj8vo8Cku9CiX2S+t4t4KNvKqyHEP9YN5S9sRqo/zw"
+        crossorigin="anonymous"></script>
+<style>
+  :root {
+    --bg: #f3f5f9;
+    --surface: #ffffff;
+    --ink: #142035;
+    --muted: #5d6779;
+    --faint: #8a93a3;
+    --line: #e2e6ed;
+    --line-strong: #cfd5df;
+    --brand: #0b3d91;
+    --brand-ink: #ffffff;
+    --brand-soft: #e7eefb;
 
-    .calendar {
-      margin: 0 20px 20px; background: white; border-radius: 14px; overflow: hidden;
-      box-shadow: 0 1px 8px rgba(0,0,0,0.06); border: 1px solid #E2E8F0;
-    }
-    .cal-grid { display: grid; grid-template-columns: 64px repeat(5, 1fr); }
-    .cal-header-empty {
-      padding: 12px 6px; background: #F8FAFC;
-      border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0;
-    }
-    .cal-header {
-      padding: 12px 8px; text-align: center; background: #F8FAFC;
-      border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0;
-    }
-    .cal-header:last-child { border-right: none; }
-    .cal-header.today { background: #E3F2FD; border-bottom: 3px solid #1565C0; }
-    .cal-header .day-name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748B; }
-    .cal-header.today .day-name { color: #1565C0; }
-    .cal-header .day-num { font-size: 18px; font-weight: 700; color: #1A1A2E; margin-top: 2px; }
-    .cal-header.today .day-num { color: #1565C0; }
+    --free: #eef8f2;
+    --free-hover: #cdeedb;
+    --free-ink: #17703f;
 
-    .time-label {
-      padding: 0 8px; display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 500; color: #64748B;
-      background: #FAFBFD; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0;
-      min-height: 32px;
-    }
-    .time-label.half {
-      border-bottom: 1px dashed #E2E8F0;
-      min-height: 32px;
-      color: #94A3B8;
-      font-size: 11px;
-      font-weight: 400;
-    }
-    .slot {
-      min-height: 32px; position: relative; border-bottom: 1px solid #E2E8F0;
-      border-right: 1px solid #E2E8F0; cursor: pointer; transition: background 0.15s;
-    }
-    .slot.half-slot {
-      border-bottom: 1px dashed #E2E8F0;
-    }
-    .slot:nth-child(6n) { border-right: none; }
-    .slot.free { background: #E8F5E9; }
-    .slot.free:hover { background: #C8E6C9; }
-    .slot.busy { background: #FFCDD2; }
+    --busy-bg: #fdeaea;
+    --busy-bar: #d23f3f;
+    --busy-ink: #7d1b1b;
 
-    .booking-card {
-      position: absolute; top: 3px; left: 3px; right: 3px;
-      background: linear-gradient(135deg, #E53935, #C62828);
-      border-radius: 7px; padding: 6px 8px; color: white; overflow: hidden; z-index: 2;
-      box-shadow: 0 2px 8px rgba(229,57,53,0.3); cursor: pointer;
-    }
-    .booking-card .title { font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .booking-card .info { font-size: 10px; opacity: 0.9; margin-top: 1px; }
+    --mine-bg: #e5edfc;
+    --mine-bar: #1f5fd1;
+    --mine-ink: #102f6b;
 
-    /* Modal */
-    .overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center; z-index: 1000;
-    }
-    .modal {
-      background: white; border-radius: 20px; padding: 28px; width: 100%; max-width: 420;
-      box-shadow: 0 24px 48px rgba(0,0,0,0.2); animation: fadeIn 0.2s ease;
-    }
-    .modal h2 { font-size: 21px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px; }
-    .modal .modal-sub { font-size: 14px; color: #64748B; margin-bottom: 20px; }
-    .modal label { display: block; font-size: 12px; font-weight: 600; color: #64748B; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .modal input {
-      width: 100%; padding: 11px 14px; border: 2px solid #E2E8F0; border-radius: 10px;
-      font-size: 15px; margin-bottom: 14px; outline: none; font-family: inherit;
-      transition: border-color 0.15s;
-    }
-    .modal input:focus { border-color: #1565C0; }
-    .duration-btns { display: flex; gap: 8px; margin-bottom: 24px; }
-    .dur-btn {
-      flex: 1; padding: 10px; border: 2px solid #E2E8F0; border-radius: 10px;
-      background: white; color: #1A1A2E; font-weight: 600; font-size: 14px; cursor: pointer;
-      transition: all 0.15s;
-    }
-    .dur-btn.active { border-color: #1565C0; background: #E3F2FD; color: #1565C0; }
-    .modal-actions { display: flex; gap: 10px; }
-    .btn-cancel {
-      flex: 1; padding: 13px; border: 2px solid #E2E8F0; border-radius: 12px;
-      background: white; color: #1A1A2E; font-size: 15px; font-weight: 600; cursor: pointer;
-    }
-    .btn-book {
-      flex: 2; padding: 13px; border: none; border-radius: 12px;
-      background: linear-gradient(135deg, #1565C0, #0D47A1); color: white;
-      font-size: 15px; font-weight: 700; cursor: pointer;
-      box-shadow: 0 4px 12px rgba(21,101,192,0.3); transition: opacity 0.15s;
-    }
-    .btn-book:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-delete {
-      flex: 2; padding: 13px; border: none; border-radius: 12px;
-      background: linear-gradient(135deg, #E53935, #C62828); color: white;
-      font-size: 15px; font-weight: 700; cursor: pointer;
-      box-shadow: 0 4px 12px rgba(229,57,53,0.3);
-    }
-    .detail-card {
-      background: linear-gradient(135deg, #E53935, #C62828);
-      border-radius: 12px; padding: 18px; color: white; margin-bottom: 20px;
-    }
-    .detail-card .title { font-size: 19px; font-weight: 700; }
-    .detail-card .info { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+    --pend-bg: #fff5dc;
+    --pend-bar: #d99a00;
+    --pend-ink: #6b4a00;
 
-    .toast {
-      position: fixed; top: 24px; right: 24px; z-index: 2000;
-      padding: 14px 24px; border-radius: 12px; color: white; font-weight: 600; font-size: 14px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2); animation: slideIn 0.3s ease;
-    }
-    .toast.success { background: #2E7D32; }
-    .toast.error { background: #C62828; }
+    --past: #f6f7f9;
+    --row: 30px;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(20,32,53,.06), 0 4px 16px rgba(20,32,53,.06);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-size: 15px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
-    .loading { text-align: center; padding: 80px 20px; color: #64748B; }
-    .loading .icon { font-size: 40px; margin-bottom: 12px; }
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 20px; background: var(--brand); color: var(--brand-ink);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand-mark {
+    width: 36px; height: 36px; border-radius: 9px; background: rgba(255,255,255,.14);
+    display: grid; place-items: center; flex: none;
+  }
+  .brand-title { font-weight: 650; font-size: 18px; letter-spacing: .2px; white-space: nowrap; }
+  .brand-sub { font-size: 12px; opacity: .78; white-space: nowrap; }
+  .user { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: #fff; color: var(--brand);
+    display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none;
+  }
+  .user-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .btn-ghost-light {
+    background: transparent; border: 1px solid rgba(255,255,255,.35); color: #fff;
+    border-radius: 8px; padding: 6px 12px; font-size: 13px;
+  }
+  .btn-ghost-light:hover { background: rgba(255,255,255,.12); }
 
-    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-    @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .banner {
+    margin: 12px 20px 0; padding: 10px 14px; border-radius: 8px; font-size: 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .banner.demo { background: #fff5dc; color: #5c4100; border: 1px solid #f1d58a; }
+  .banner.error { background: #fdeaea; color: #7d1b1b; border: 1px solid #f2b8b8; }
 
-    @media (max-width: 640px) {
-      .header { padding: 16px; margin: 12px; }
-      .header h1 { font-size: 20px; }
-      .calendar { margin: 0 12px 12px; }
-      .cal-grid { grid-template-columns: 48px repeat(5, 1fr); }
-      .cal-header .day-name { font-size: 9px; }
-      .cal-header .day-num { font-size: 14px; }
-      .time-label { font-size: 10px; padding: 0 4px; min-height: 28px; }
-      .time-label.half { min-height: 28px; }
-      .slot { min-height: 28px; }
-      .booking-card { padding: 4px 5px; }
-      .booking-card .title { font-size: 10px; }
-      .booking-card .info { font-size: 8px; }
-      .modal { margin: 12px; padding: 20px; }
-    }
-  </style>
+  /* ---------- toolbar ---------- */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    padding: 14px 20px 10px;
+  }
+  .weeknav { display: flex; align-items: center; gap: 8px; }
+  .iconbtn {
+    width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line-strong);
+    background: var(--surface); display: grid; place-items: center;
+  }
+  .iconbtn:hover { background: var(--brand-soft); border-color: #b9c9ea; }
+  .btn-today {
+    height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line-strong);
+    background: var(--surface); font-weight: 600; font-size: 14px;
+  }
+  .btn-today:hover { background: var(--brand-soft); }
+  .weeklabel { font-size: 18px; font-weight: 650; margin-left: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+  .sw.free { background: var(--free); border: 1px solid #b7e3c8; }
+  .sw.busy { background: var(--busy-bg); border-left: 4px solid var(--busy-bar); }
+  .sw.mine { background: var(--mine-bg); border-left: 4px solid var(--mine-bar); }
+
+  /* ---------- day tabs (mobile) ---------- */
+  .daytabs { display: none; gap: 6px; padding: 0 16px 10px; }
+  .daytab {
+    flex: 1; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 8px;
+    padding: 6px 0; font-size: 13px; line-height: 1.15;
+  }
+  .daytab b { display: block; font-size: 16px; }
+  .daytab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .daytab.today:not(.active) { border-color: var(--brand); color: var(--brand); }
+
+  /* ---------- calendar grid ---------- */
+  .calwrap { padding: 0 20px 16px; }
+  .cal {
+    background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden; border: 1px solid var(--line);
+  }
+  .grid { display: grid; grid-template-columns: 60px repeat(5, minmax(0, 1fr)); }
+  .corner { border-bottom: 1px solid var(--line); background: var(--surface); }
+  .dayhead {
+    padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--line);
+    border-left: 1px solid var(--line); background: var(--surface);
+  }
+  .dayhead .dn { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+  .dayhead .dd { font-size: 20px; font-weight: 650; margin-top: 2px; }
+  .dayhead.today .dd {
+    display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+    background: var(--brand); color: #fff; font-size: 17px;
+  }
+  .dayhead.today .dn { color: var(--brand); font-weight: 700; }
+
+  .timecol { position: relative; }
+  .tlabel {
+    height: var(--row); font-size: 12px; color: var(--faint); text-align: right; padding-right: 8px;
+    transform: translateY(-7px);
+  }
+  .tlabel.half { visibility: hidden; }
+  .daycol { position: relative; border-left: 1px solid var(--line); }
+  .slot {
+    height: var(--row); border-top: 1px solid transparent; background: var(--free);
+    position: relative; display: block; width: 100%; border-left: 0; border-right: 0; border-bottom: 0;
+    padding: 0; text-align: left;
+  }
+  .slot.hour { border-top-color: var(--line); }
+  .slot.halfline { border-top: 1px dashed #e8ebf0; }
+  button.slot:hover { background: var(--free-hover); }
+  button.slot:hover::after {
+    content: "+ Prenota"; position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; font-weight: 600; color: var(--free-ink);
+  }
+  .slot.past { background: var(--past); cursor: default; }
+  .slot.wait { background: #f1f3f6; cursor: progress; }
+
+  .ev {
+    position: absolute; left: 3px; right: 3px; border-radius: 6px; padding: 3px 7px;
+    overflow: hidden; font-size: 12.5px; line-height: 1.25; text-align: left;
+    border: 0; border-left: 4px solid var(--busy-bar); background: var(--busy-bg); color: var(--busy-ink);
+    box-shadow: 0 1px 2px rgba(20,32,53,.08); z-index: 2;
+  }
+  .ev:hover { filter: brightness(.97); box-shadow: 0 2px 8px rgba(20,32,53,.16); }
+  .ev.mine { border-left-color: var(--mine-bar); background: var(--mine-bg); color: var(--mine-ink); }
+  .ev.pending {
+    border-left-color: var(--pend-bar); color: var(--pend-ink); cursor: progress;
+    background: repeating-linear-gradient(-45deg, var(--pend-bg), var(--pend-bg) 8px, #ffefc2 8px, #ffefc2 16px);
+  }
+  .ev.past { opacity: .62; }
+  .ev .t { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .ev .m { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; opacity: .85; }
+  .ev.short { display: flex; gap: 6px; align-items: center; padding-top: 1px; padding-bottom: 1px; }
+  .ev.short .t { flex: 0 1 auto; }
+  .ev.short .m { flex: 1 1 auto; }
+  .badge {
+    display: inline-block; font-size: 10.5px; font-weight: 700; padding: 0 5px; border-radius: 4px;
+    background: var(--mine-bar); color: #fff; margin-right: 4px; vertical-align: 1px;
+  }
+  .nowline { position: absolute; left: 0; right: 0; height: 2px; background: var(--brand); z-index: 3; pointer-events: none; }
+  .nowline::before {
+    content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--brand);
+  }
+
+  .footer {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    padding: 0 20px 24px; font-size: 12.5px; color: var(--faint);
+  }
+  .sync-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2fa866; margin-right: 6px; vertical-align: 1px; }
+  .sync-dot.loading { background: var(--pend-bar); }
+  .sync-dot.err { background: var(--busy-bar); }
+
+  /* ---------- modal ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(15,24,40,.45); display: grid; place-items: center;
+    padding: 16px; z-index: 50; animation: fade .12s ease-out;
+  }
+  .modal {
+    width: 100%; max-width: 460px; background: var(--surface); border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(10,20,40,.3); overflow: hidden; animation: pop .14s ease-out;
+    max-height: calc(100vh - 32px); overflow-y: auto;
+  }
+  .modal-head { padding: 18px 20px 6px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .modal-head h2 { margin: 0; font-size: 19px; }
+  .modal-head .sub { color: var(--muted); font-size: 14px; margin-top: 3px; }
+  .xbtn { border: 0; background: transparent; width: 32px; height: 32px; border-radius: 8px; font-size: 20px; color: var(--muted); flex: none; }
+  .xbtn:hover { background: var(--bg); }
+  .modal-body { padding: 10px 20px 4px; }
+  .modal-foot { padding: 14px 20px 18px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .field input[type=text], .field input[type=date], .field select {
+    width: 100%; height: 42px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 12px;
+    font: inherit; background: #fff; color: var(--ink);
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .readonly { height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 8px; background: var(--bg); font-size: 15px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .durs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .dur {
+    border: 1px solid var(--line-strong); background: #fff; border-radius: 8px; padding: 8px 12px;
+    font-size: 14px; font-weight: 600; min-width: 62px;
+  }
+  .dur:hover:not(:disabled) { border-color: var(--brand); }
+  .dur.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .dur:disabled { opacity: .38; text-decoration: line-through; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .hint.warn { color: var(--busy-ink); }
+  .btn {
+    height: 42px; padding: 0 18px; border-radius: 9px; border: 1px solid var(--line-strong); background: #fff;
+    font-weight: 600; font-size: 15px;
+  }
+  .btn:hover:not(:disabled) { background: var(--bg); }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.primary:hover:not(:disabled) { background: #093479; }
+  .btn.danger { background: #fff; border-color: #e7a3a3; color: #a32121; }
+  .btn.danger:hover:not(:disabled) { background: #fdeaea; }
+  .btn:disabled { opacity: .5; }
+  .detail-list { margin: 4px 0 0; padding: 0; list-style: none; }
+  .detail-list li { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .detail-list li:last-child { border-bottom: 0; }
+  .detail-list .k { width: 92px; flex: none; color: var(--muted); font-size: 13px; padding-top: 1px; }
+  .note { background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; color: var(--muted); margin: 12px 0 4px; }
+  .note a { color: var(--brand); }
+
+  /* ---------- login ---------- */
+  .login {
+    min-height: 100vh; display: grid; place-items: center; padding: 20px;
+    background: linear-gradient(160deg, #0b3d91 0%, #0a2f6e 55%, #081f49 100%);
+  }
+  .login-card {
+    background: #fff; border-radius: 16px; padding: 36px 32px 30px; width: 100%; max-width: 380px; text-align: center;
+    box-shadow: 0 30px 80px rgba(0,0,0,.3);
+  }
+  .login-card .lm { width: 56px; height: 56px; border-radius: 14px; background: var(--brand); display: grid; place-items: center; margin: 0 auto 16px; }
+  .login-card h1 { font-size: 22px; margin: 0 0 6px; }
+  .login-card p { color: var(--muted); margin: 0 0 24px; font-size: 14.5px; }
+  .msbtn {
+    width: 100%; height: 46px; border-radius: 9px; border: 1px solid var(--line-strong); background: #fff;
+    display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 600; font-size: 15px;
+  }
+  .msbtn:hover { background: var(--bg); }
+  .login-card .small { font-size: 12.5px; color: var(--faint); margin-top: 18px; }
+
+  .loading-screen { min-height: 60vh; display: grid; place-items: center; color: var(--muted); }
+  .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--brand); animation: spin .8s linear infinite; margin: 0 auto 12px; }
+
+  /* ---------- toasts ---------- */
+  #toasts { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 80; max-width: calc(100vw - 32px); }
+  .toast {
+    min-width: 260px; max-width: 380px; padding: 12px 14px; border-radius: 10px; color: #fff; font-size: 14px;
+    box-shadow: 0 8px 24px rgba(10,20,40,.25); animation: slidein .18s ease-out; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .toast.ok { background: #1d8a4e; }
+  .toast.err { background: #c03434; }
+  .toast.info { background: #26324a; }
+  .toast b { display: block; }
+
+  @keyframes fade { from { opacity: 0 } }
+  @keyframes pop { from { transform: translateY(8px) scale(.98); opacity: 0 } }
+  @keyframes slidein { from { transform: translateX(16px); opacity: 0 } }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  /* ---------- mobile: one day at a time ---------- */
+  @media (max-width: 760px) {
+    .topbar { padding: 10px 16px; }
+    .brand-sub, .user-name { display: none; }
+    .toolbar { padding: 12px 16px 8px; }
+    .weeklabel { font-size: 16px; }
+    .legend { display: none; }
+    .daytabs { display: flex; }
+    .calwrap { padding: 0 12px 12px; }
+    .banner { margin: 10px 12px 0; }
+    .footer { padding: 0 12px 20px; }
+    .grid { grid-template-columns: 52px minmax(0, 1fr); }
+    .grid .dayhead, .grid .daycol { display: none; }
+    .grid.show-0 [data-d="0"], .grid.show-1 [data-d="1"], .grid.show-2 [data-d="2"],
+    .grid.show-3 [data-d="3"], .grid.show-4 [data-d="4"] { display: block; }
+    .grid .dayhead { border-left: 0; }
+    .ev { font-size: 13.5px; }
+    button.slot:hover::after { content: none; }
+    #toasts { left: 16px; right: 16px; }
+    .toast { max-width: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
 </head>
 <body>
-
-<div id="app"></div>
+<div id="app"><div class="loading-screen"><div><div class="spinner"></div>Caricamento…</div></div></div>
+<div id="modal"></div>
+<div id="toasts" role="status" aria-live="polite"></div>
 
 <script>
-// =====================================================
-// FIREBASE CONFIG
-// =====================================================
-const DB_URL = "https://sala-riunioni-2121b-default-rtdb.europe-west1.firebasedatabase.app";
+/* =====================================================================
+   CONFIGURAZIONE — compilare dopo la registrazione dell'app in Entra ID
+   ===================================================================== */
+const CONFIG = {
+  tenantId:  "7693012d-bd02-4e23-9d68-d2f32763ee7d",          // Entra ID > Panoramica > ID tenant (directory)
+  clientId:  "4027aee9-3314-4e0f-9229-fc4375dd715e",          // Registrazioni app > Sala Riunioni > ID applicazione (client)
+  roomEmail: "sala.riunioni@spedimar.ch",   // indirizzo stampato a fine script PowerShell
+  roomName:  "Sala Riunioni",
+  admins:    ["stefanostaletti@spedimar.ch"],    // possono eliminare qualsiasi prenotazione
+  dayStart: 8,          // prima ora visibile
+  dayEnd:   18,         // ultima ora (fine giornata)
+  slotMinutes: 30,
+  refreshSeconds: 30,
+  maxRecurrenceDays: 180, // deve coincidere con BookingWindowDays dello script
+  timeZone: "W. Europe Standard Time"
+};
+/* ===================================================================== */
 
-// =====================================================
-// STATE
-// =====================================================
-let state = {
-  weekOffset: 0,
-  bookings: {},
-  modal: null,       // { dayIdx, slot }
-  selected: null,    // booking detail
-  form: { title: "", person: "", duration: 2 },  // 2 slots = 1h default
-  loading: true,
-  syncing: false,
-  toast: null,
+const SCOPES = ["User.Read", "Calendars.ReadWrite", "Calendars.ReadWrite.Shared"];
+const DEMO = /INSERIRE/.test(CONFIG.clientId + CONFIG.tenantId) || new URLSearchParams(location.search).has("demo");
+
+const DAY_NAMES   = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
+const DAY_SHORT   = ["Lun", "Mar", "Mer", "Gio", "Ven"];
+const MONTHS      = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+const DURATIONS   = [30, 60, 90, 120, 180, 240];
+const ROW_PX      = 30;
+
+/* ---------------- utilità ---------------- */
+const pad = n => String(n).padStart(2, "0");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const addMin  = (d, m) => new Date(d.getTime() + m * 60000);
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const atTime  = (d, h, m = 0) => { const x = new Date(d); x.setHours(h, m, 0, 0); return x; };
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const mondayOf = d => { const x = atTime(d, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+const hhmm = d => pad(d.getHours()) + ":" + pad(d.getMinutes());
+const dateIso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const localIso = d => `${dateIso(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+const parseUtc = s => new Date(String(s).replace(/(\.\d+)?Z?$/, "") + "Z");
+const longDate = d => `${DAY_NAMES[(d.getDay() + 6) % 7]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+const durLabel = m => m < 60 ? `${m} min` : (m % 60 ? `${Math.floor(m / 60)} h ${m % 60}` : `${m / 60} h`);
+const initials = n => (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+const overlaps = (s1, e1, s2, e2) => s1 < e2 && s2 < e1;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function weekLabel(ws) {
+  const we = addDays(ws, 4);
+  if (ws.getMonth() === we.getMonth()) return `${ws.getDate()}–${we.getDate()} ${MONTHS[we.getMonth()]} ${we.getFullYear()}`;
+  return `${ws.getDate()} ${MONTHS[ws.getMonth()].slice(0, 3)} – ${we.getDate()} ${MONTHS[we.getMonth()].slice(0, 3)} ${we.getFullYear()}`;
+}
+
+/* =====================================================================
+   API — Microsoft Graph (reale) oppure demo in memoria
+   ===================================================================== */
+let msalApp = null, account = null;
+
+function redirectUri() {
+  return location.origin + location.pathname.replace(/index\.html$/i, "");
+}
+
+async function getToken() {
+  try {
+    const r = await msalApp.acquireTokenSilent({ scopes: SCOPES, account });
+    return r.accessToken;
+  } catch (e) {
+    if (e instanceof msal.InteractionRequiredAuthError) {
+      await msalApp.acquireTokenRedirect({ scopes: SCOPES, account });
+      return new Promise(() => {});
+    }
+    throw e;
+  }
+}
+
+async function graph(path, { method = "GET", body } = {}) {
+  const url = path.startsWith("http") ? path : "https://graph.microsoft.com/v1.0" + path;
+  const res = await fetch(url, {
+    method,
+    headers: { Authorization: "Bearer " + await getToken(), "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (res.status === 202 || res.status === 204) return null;
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.error?.message || res.statusText);
+    err.status = res.status; err.code = data?.error?.code;
+    throw err;
+  }
+  return data;
+}
+
+const roomPath = () => `/users/${encodeURIComponent(CONFIG.roomEmail)}`;
+
+function normalize(e) {
+  return {
+    id: e.id,
+    subject: e.subject || "(senza titolo)",
+    start: parseUtc(e.start.dateTime),
+    end: parseUtc(e.end.dateTime),
+    allDay: !!e.isAllDay,
+    organizerName: e.organizer?.emailAddress?.name || "",
+    organizerEmail: (e.organizer?.emailAddress?.address || "").toLowerCase(),
+    iCalUId: e.iCalUId,
+    seriesMasterId: e.seriesMasterId || null,
+    recurring: e.type === "occurrence" || e.type === "exception"
+  };
+}
+
+const GraphApi = {
+  async me() {
+    const u = await graph("/me?$select=displayName,mail,userPrincipalName");
+    return {
+      name: u.displayName,
+      emails: [u.mail, u.userPrincipalName, account?.username].filter(Boolean).map(s => s.toLowerCase())
+    };
+  },
+
+  async listRoom(from, to) {
+    const sel = "id,subject,start,end,organizer,isAllDay,isCancelled,iCalUId,type,seriesMasterId,showAs";
+    let url = `${roomPath()}/calendarView?startDateTime=${from.toISOString()}&endDateTime=${to.toISOString()}&$select=${sel}&$top=250`;
+    const out = [];
+    while (url) {
+      const d = await graph(url);
+      out.push(...d.value);
+      url = d["@odata.nextLink"];
+    }
+    return out.filter(e => !e.isCancelled && e.showAs !== "free").map(normalize);
+  },
+
+  async create(b) {
+    const payload = {
+      subject: b.subject,
+      start: { dateTime: localIso(b.start), timeZone: CONFIG.timeZone },
+      end:   { dateTime: localIso(b.end),   timeZone: CONFIG.timeZone },
+      location: { displayName: CONFIG.roomName, locationEmailAddress: CONFIG.roomEmail, locationType: "conferenceRoom" },
+      attendees: [{ emailAddress: { address: CONFIG.roomEmail, name: CONFIG.roomName }, type: "resource" }],
+      showAs: "busy",
+      allowNewTimeProposals: false,
+      body: { contentType: "text", content: "Prenotazione effettuata dall'app Sala Riunioni Spedimar." }
+    };
+    if (b.recurrence) payload.recurrence = b.recurrence;
+    const ev = await graph("/me/events", { method: "POST", body: payload });
+    return ev.id;
+  },
+
+  // 'accepted' | 'declined' | 'pending'
+  async roomResponse(myEventId) {
+    const ev = await graph(`/me/events/${myEventId}?$select=attendees`);
+    const room = (ev.attendees || []).find(a => (a.emailAddress?.address || "").toLowerCase() === CONFIG.roomEmail.toLowerCase());
+    const r = room?.status?.response;
+    if (r === "accepted") return "accepted";
+    if (r === "declined") return "declined";
+    return "pending";
+  },
+
+  async discard(myEventId) {
+    await graph(`/me/events/${myEventId}`, { method: "DELETE" });
+  },
+
+  async cancelMine(ev, wholeSeries) {
+    const from = addMin(ev.start, -1), to = addMin(ev.end, 1);
+    const d = await graph(`/me/calendarView?startDateTime=${from.toISOString()}&endDateTime=${to.toISOString()}&$select=id,iCalUId,seriesMasterId,isOrganizer,start,end&$top=50`);
+    const list = d.value || [];
+    const mine = list.find(x => x.iCalUId === ev.iCalUId) ||
+                 list.find(x => x.isOrganizer && +parseUtc(x.start.dateTime) === +ev.start && +parseUtc(x.end.dateTime) === +ev.end);
+    if (!mine) throw new Error("Non trovo questa riunione nel tuo calendario. Annullala direttamente da Outlook.");
+    const target = wholeSeries && mine.seriesMasterId ? mine.seriesMasterId : mine.id;
+    await graph(`/me/events/${target}/cancel`, { method: "POST", body: { comment: "Prenotazione della sala annullata." } });
+  },
+
+  async adminDelete(ev, wholeSeries) {
+    const target = wholeSeries && ev.seriesMasterId ? ev.seriesMasterId : ev.id;
+    await graph(`${roomPath()}/events/${target}`, { method: "DELETE" });
+  }
 };
 
-// Slot indices: 0 = 08:00, 1 = 08:30, 2 = 09:00, ... up to 18:00 (22 slots)
-const SLOT_COUNT = 22;
-const SLOTS = Array.from({ length: SLOT_COUNT }, (_, i) => i);
-const DAYS_IT = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"];
+/* ---------- demo: stessi metodi, dati finti in memoria ---------- */
+const DemoApi = (() => {
+  const ws = mondayOf(new Date());
+  let seq = 1;
+  const people = [
+    ["Marco Rossi", "m.rossi@spedimar.ch"], ["Laura Bianchi", "l.bianchi@spedimar.ch"],
+    ["Giovanni Ferri", "g.ferri@spedimar.ch"], ["Utente Demo", "demo@spedimar.ch"]
+  ];
+  const mk = (day, h, m, mins, subject, p, extra = {}) => {
+    const start = atTime(addDays(ws, day), h, m);
+    return { id: "d" + seq++, subject, start, end: addMin(start, mins), allDay: false,
+             organizerName: people[p][0], organizerEmail: people[p][1], iCalUId: "u" + seq, seriesMasterId: null, recurring: false, ...extra };
+  };
+  const events = [];
+  // riunione ricorrente del lunedì (4 settimane)
+  for (let w = -1; w < 4; w++) events.push(mk(7 * w, 9, 0, 60, "Riunione operativa settimanale", 2, { seriesMasterId: "s1", recurring: true }));
+  events.push(mk(1, 10, 30, 90, "Call con cliente DHL", 0));
+  events.push(mk(1, 14, 0, 60, "Colloquio candidato magazzino", 1));
+  events.push(mk(2, 11, 0, 30, "Allineamento IT", 3));
+  events.push(mk(3, 15, 0, 120, "Presentazione SIGEP Transport", 2));
+  events.push(mk(4, 8, 30, 60, "Revisione tariffe Galliker", 0));
+  events.push(mk(8, 10, 0, 60, "Visita fornitore", 1));
+  const pendingResp = new Map();
 
-function slotToTime(slotIdx) {
-  const totalMinutes = 8 * 60 + slotIdx * 30;
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
-}
-
-function isHourStart(slotIdx) {
-  return slotIdx % 2 === 0; // even slots are on the hour (08:00, 09:00...)
-}
-
-function getWeekDates(offset) {
-  const now = new Date();
-  const dow = now.getDay();
-  const mon = new Date(now);
-  mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7);
-  return DAYS_IT.map((name, i) => {
-    const d = new Date(mon);
-    d.setDate(mon.getDate() + i);
-    return {
-      name,
-      date: d,
-      label: d.getDate() + "/" + (d.getMonth() + 1),
-      key: d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"),
-    };
-  });
-}
-
-function isToday(date) {
-  const t = new Date();
-  return date.getDate() === t.getDate() && date.getMonth() === t.getMonth() && date.getFullYear() === t.getFullYear();
-}
-
-// =====================================================
-// FIREBASE REST API
-// =====================================================
-async function fbGet(path) {
-  try {
-    const r = await fetch(DB_URL + "/" + path + ".json");
-    return await r.json();
-  } catch (e) { console.error(e); return null; }
-}
-
-async function fbPut(path, data) {
-  try {
-    await fetch(DB_URL + "/" + path + ".json", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-  } catch (e) { console.error(e); }
-}
-
-async function fbDelete(path) {
-  try { await fetch(DB_URL + "/" + path + ".json", { method: "DELETE" }); }
-  catch (e) { console.error(e); }
-}
-
-// =====================================================
-// DATA LOADING
-// =====================================================
-async function loadWeek() {
-  state.loading = true;
-  render();
-  const dates = getWeekDates(state.weekOffset);
-  const bookings = {};
-  for (const day of dates) {
-    const data = await fbGet("bookings/" + day.key);
-    if (data) {
-      Object.entries(data).forEach(([hour, b]) => {
-        bookings[day.key + "/" + hour] = b;
-      });
+  return {
+    async me() { await sleep(150); return { name: "Utente Demo", emails: ["demo@spedimar.ch"] }; },
+    async listRoom(from, to) { await sleep(200); return events.filter(e => overlaps(e.start, e.end, from, to)).map(e => ({ ...e })); },
+    async create(b) {
+      await sleep(400);
+      const starts = [b.start];
+      if (b.recurrence) {
+        const until = atTime(new Date(b.recurrence.range.endDate + "T00:00:00"), 23, 59);
+        const daily = b.recurrence.pattern.daysOfWeek.length > 1;
+        for (let d = addDays(b.start, daily ? 1 : 7); d <= until; d = addDays(d, daily ? 1 : 7)) {
+          if (daily && (d.getDay() === 0 || d.getDay() === 6)) continue;
+          starts.push(d);
+        }
+      }
+      const mins = (b.end - b.start) / 60000;
+      const conflict = starts.some(s => events.some(e => overlaps(s, addMin(s, mins), e.start, e.end)));
+      const id = "d" + seq++;
+      if (conflict) { pendingResp.set(id, "declined"); return id; }
+      const master = b.recurrence ? "s" + seq : null;
+      starts.forEach(s => events.push({ id: "d" + seq++, subject: b.subject, start: s, end: addMin(s, mins), allDay: false,
+        organizerName: "Utente Demo", organizerEmail: "demo@spedimar.ch", iCalUId: "u" + seq, seriesMasterId: master, recurring: !!master }));
+      pendingResp.set(id, "accepted");
+      return id;
+    },
+    async roomResponse(id) { await sleep(900); return pendingResp.get(id) || "pending"; },
+    async discard() {},
+    async cancelMine(ev, wholeSeries) { await sleep(300); this._remove(ev, wholeSeries); },
+    async adminDelete(ev, wholeSeries) { await sleep(300); this._remove(ev, wholeSeries); },
+    _remove(ev, wholeSeries) {
+      for (let i = events.length - 1; i >= 0; i--) {
+        const e = events[i];
+        if (e.id === ev.id || (wholeSeries && ev.seriesMasterId && e.seriesMasterId === ev.seriesMasterId)) events.splice(i, 1);
+      }
     }
+  };
+})();
+
+const api = DEMO ? DemoApi : GraphApi;
+
+/* =====================================================================
+   STATO
+   ===================================================================== */
+const state = {
+  me: null,
+  isAdmin: false,
+  weekStart: mondayOf(new Date()),
+  mobileDay: Math.min(Math.max((new Date().getDay() + 6) % 7, 0), 4),
+  events: [],
+  pending: [],            // prenotazioni inviate, in attesa della sala
+  hidden: new Map(),      // id annullati di recente -> scadenza (la sala impiega qualche secondo)
+  loading: false,
+  loadedWeek: null,      // settimana effettivamente caricata (prima non si prenota)
+  error: null,
+  lastSync: null
+};
+
+const isMine = ev => !!state.me && state.me.emails.includes(ev.organizerEmail);
+
+function visibleEvents() {
+  const now = Date.now();
+  for (const [id, exp] of state.hidden) if (exp < now) state.hidden.delete(id);
+  return state.events.filter(e => !state.hidden.has(e.id));
+}
+
+/* =====================================================================
+   CARICAMENTO DATI
+   ===================================================================== */
+let refreshSeq = 0;
+async function refresh() {
+  const mySeq = ++refreshSeq;
+  const from = state.weekStart, to = addDays(state.weekStart, 7);
+  state.loading = true; renderFooter();
+  try {
+    const evs = await api.listRoom(from, to);
+    if (mySeq !== refreshSeq) return;
+    state.events = evs;
+    state.loadedWeek = +from;
+    state.error = null;
+    state.lastSync = new Date();
+  } catch (e) {
+    if (mySeq !== refreshSeq) return;
+    state.error = friendlyError(e);
+  } finally {
+    if (mySeq === refreshSeq) { state.loading = false; render(); }
   }
-  state.bookings = bookings;
-  state.loading = false;
-  render();
 }
 
-function getBooking(dates, dayIdx, slot) {
-  const dk = dates[dayIdx]?.key;
-  if (!dk) return null;
-  const direct = state.bookings[dk + "/" + slot];
-  if (direct && direct.startSlot === slot) return direct;
-  for (let s = slot - 1; s >= 0; s--) {
-    const b = state.bookings[dk + "/" + s];
-    if (b && b.startSlot === s && slot < s + b.duration) return b;
+function friendlyError(e) {
+  if (e.status === 403 || e.code === "ErrorAccessDenied")
+    return "Non hai i permessi per vedere il calendario della sala. Contatta l'IT.";
+  if (e.status === 404 || e.code === "ErrorInvalidUser" || e.code === "ResourceNotFound")
+    return "Calendario della sala non trovato: verificare l'indirizzo roomEmail nella configurazione.";
+  if (e.status === 401) return "Sessione scaduta. Ricarica la pagina.";
+  if (e instanceof TypeError) return "Connessione non disponibile. Riprovo automaticamente.";
+  return "Errore: " + (e.message || e);
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+const ICON_CAL = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>`;
+const ICON_L = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>`;
+const ICON_R = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>`;
+const ICON_MS = `<svg width="20" height="20" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>`;
+
+function renderLogin(message) {
+  document.getElementById("app").innerHTML = `
+    <div class="login">
+      <div class="login-card">
+        <div class="lm" style="color:#fff">${ICON_CAL}</div>
+        <h1>Sala Riunioni</h1>
+        <p>Prenota la sala in pochi secondi.<br>Accedi con il tuo account aziendale Spedimar.</p>
+        <button class="msbtn" data-action="login">${ICON_MS} Accedi con Microsoft</button>
+        ${message ? `<div class="banner error" style="margin:16px 0 0;text-align:left">${esc(message)}</div>` : ""}
+        <div class="small">Spedimar SAGL · Servizio IT</div>
+      </div>
+    </div>`;
+}
+
+function render() {
+  if (!state.me) return;
+  const app = document.getElementById("app");
+  const ws = state.weekStart;
+  const today = new Date();
+
+  const daysHtml = [0, 1, 2, 3, 4].map(i => {
+    const d = addDays(ws, i);
+    return `<div class="dayhead ${sameDay(d, today) ? "today" : ""}" data-d="${i}">
+              <div class="dn">${DAY_SHORT[i]}</div><div class="dd">${d.getDate()}</div></div>`;
+  }).join("");
+
+  const tabsHtml = [0, 1, 2, 3, 4].map(i => {
+    const d = addDays(ws, i);
+    return `<button class="daytab ${i === state.mobileDay ? "active" : ""} ${sameDay(d, today) ? "today" : ""}" data-action="day" data-d="${i}">
+              ${DAY_SHORT[i]}<b>${d.getDate()}</b></button>`;
+  }).join("");
+
+  const rows = (CONFIG.dayEnd - CONFIG.dayStart) * 60 / CONFIG.slotMinutes;
+  let timeHtml = "";
+  for (let r = 0; r < rows; r++) {
+    const mins = CONFIG.dayStart * 60 + r * CONFIG.slotMinutes;
+    const isHour = mins % 60 === 0;
+    timeHtml += `<div class="tlabel ${isHour ? "" : "half"}">${isHour ? pad(mins / 60) + ":00" : ""}</div>`;
   }
-  return null;
+
+  const cols = [0, 1, 2, 3, 4].map(i => renderDay(i, rows)).join("");
+
+  app.innerHTML = `
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">${ICON_CAL}</div>
+        <div><div class="brand-title">${esc(CONFIG.roomName)}</div><div class="brand-sub">Spedimar SAGL · prenotazioni sincronizzate con Outlook</div></div>
+      </div>
+      <div class="user">
+        <div class="avatar" title="${esc(state.me.name)}">${esc(initials(state.me.name))}</div>
+        <div class="user-name">${esc(state.me.name)}</div>
+        ${DEMO ? "" : `<button class="btn-ghost-light" data-action="logout">Esci</button>`}
+      </div>
+    </header>
+    ${DEMO ? `<div class="banner demo"><span>⚠️</span><span><b>Modalità demo</b> — dati di prova, nessuna prenotazione reale. Si attiva finché nella configurazione mancano tenantId e clientId.</span></div>` : ""}
+    ${state.error ? `<div class="banner error"><span>⛔</span><span>${esc(state.error)}</span></div>` : ""}
+    <div class="toolbar">
+      <div class="weeknav">
+        <button class="iconbtn" data-action="prev" aria-label="Settimana precedente">${ICON_L}</button>
+        <button class="btn-today" data-action="today">Oggi</button>
+        <button class="iconbtn" data-action="next" aria-label="Settimana successiva">${ICON_R}</button>
+        <div class="weeklabel">${weekLabel(ws)}</div>
+      </div>
+      <div class="legend">
+        <span><i class="sw free"></i>Libero — clicca per prenotare</span>
+        <span><i class="sw busy"></i>Occupato</span>
+        <span><i class="sw mine"></i>Le tue prenotazioni</span>
+      </div>
+    </div>
+    <div class="daytabs">${tabsHtml}</div>
+    <div class="calwrap">
+      <div class="cal">
+        <div class="grid show-${state.mobileDay}">
+          <div class="corner"></div>${daysHtml}
+          <div class="timecol">${timeHtml}</div>${cols}
+        </div>
+      </div>
+    </div>
+    <div class="footer" id="footer"></div>`;
+  renderFooter();
 }
 
-function isStartSlot(dates, dayIdx, slot) {
-  const dk = dates[dayIdx]?.key;
-  const b = state.bookings[dk + "/" + slot];
-  return b && b.startSlot === slot ? b : null;
+function renderFooter() {
+  const f = document.getElementById("footer");
+  if (!f) return;
+  const cls = state.error ? "err" : state.loading ? "loading" : "";
+  const txt = state.loading ? "Aggiornamento…" : state.lastSync ? `Aggiornato alle ${hhmm(state.lastSync)}` : "";
+  f.innerHTML = `<span><i class="sync-dot ${cls}"></i>${txt} · si aggiorna ogni ${CONFIG.refreshSeconds} secondi</span>
+                 <span>Puoi prenotare la sala anche da Outlook o Teams: comparirà qui.</span>`;
 }
 
-// =====================================================
-// ACTIONS
-// =====================================================
-function showToast(msg, type) {
-  state.toast = { message: msg, type: type || "success" };
+function renderDay(i, rows) {
+  const day = addDays(state.weekStart, i);
+  const dayStart = atTime(day, CONFIG.dayStart), dayEnd = atTime(day, CONFIG.dayEnd);
+  const now = new Date();
+  const ready = state.loadedWeek === +state.weekStart;
+
+  let slots = "";
+  for (let r = 0; r < rows; r++) {
+    const s = addMin(dayStart, r * CONFIG.slotMinutes);
+    const past = addMin(s, CONFIG.slotMinutes) <= now;
+    const cls = ["slot", s.getMinutes() === 0 ? "hour" : "halfline", past ? "past" : ready ? "" : "wait"].join(" ");
+    slots += past || !ready
+      ? `<div class="${cls}"></div>`
+      : `<button class="${cls}" data-action="book" data-t="${s.getTime()}" aria-label="Prenota ${longDate(s)} alle ${hhmm(s)}"></button>`;
+  }
+
+  // eventi del giorno (reali + in attesa), ritagliati sull'orario visibile
+  const evs = visibleEvents().map(e => ({ ...e, kind: isMine(e) ? "mine" : "busy" }));
+  for (const p of state.pending) {
+    const dup = evs.some(e => +e.start === +p.start && +e.end === +p.end && isMine(e));
+    if (!dup) evs.push({ ...p, kind: "pending" });
+  }
+  const dayEvs = evs
+    .map(e => e.allDay ? { ...e, vs: dayStart, ve: dayEnd } : { ...e, vs: new Date(Math.max(e.start, dayStart)), ve: new Date(Math.min(e.end, dayEnd)) })
+    .filter(e => overlaps(e.start, e.end, atTime(day, 0), atTime(addDays(day, 1), 0)) && e.vs < e.ve)
+    .sort((a, b) => a.vs - b.vs || b.ve - a.ve);
+
+  // corsie per eventuali sovrapposizioni (es. prenotazioni fatte prima delle regole)
+  const lanes = [];
+  dayEvs.forEach(e => {
+    let lane = lanes.findIndex(end => end <= e.vs);
+    if (lane === -1) { lane = lanes.length; lanes.push(e.ve); } else lanes[lane] = e.ve;
+    e.lane = lane;
+  });
+  dayEvs.forEach(e => { e.lanes = Math.max(1, ...dayEvs.filter(o => overlaps(o.vs, o.ve, e.vs, e.ve)).map(o => o.lane + 1)); });
+
+  const pxPerMin = ROW_PX / CONFIG.slotMinutes;
+  const evHtml = dayEvs.map(e => {
+    const top = (e.vs - dayStart) / 60000 * pxPerMin;
+    const h = Math.max((e.ve - e.vs) / 60000 * pxPerMin - 2, 18);
+    const short = h < 40;
+    const widthPct = 100 / e.lanes;
+    const pos = e.lanes > 1 ? `left:calc(${widthPct * e.lane}% + 3px);right:auto;width:calc(${widthPct}% - 6px);` : "";
+    const time = e.allDay ? "Tutto il giorno" : `${hhmm(e.start)}–${hhmm(e.end)}`;
+    const who = e.kind === "pending" ? "In attesa di conferma…" : e.kind === "mine" ? "" : e.organizerName;
+    const meta = [time, who].filter(Boolean).join(" · ");
+    const badge = e.kind === "mine" ? `<span class="badge">TUA</span>` : "";
+    const past = e.end <= now ? "past" : "";
+    const action = e.kind === "pending" ? "" : `data-action="detail" data-id="${esc(e.id)}"`;
+    return `<button class="ev ${e.kind} ${short ? "short" : ""} ${past}" style="top:${top + 1}px;height:${h}px;${pos}" ${action}
+              title="${esc(e.subject)} — ${esc(meta)}">
+              <span class="t">${badge}${esc(e.subject)}</span><span class="m">${esc(meta)}</span></button>`;
+  }).join("");
+
+  let nowHtml = "";
+  if (sameDay(day, now) && now >= dayStart && now <= dayEnd) {
+    nowHtml = `<div class="nowline" style="top:${(now - dayStart) / 60000 * pxPerMin}px"></div>`;
+  }
+  return `<div class="daycol" data-d="${i}">${slots}${evHtml}${nowHtml}</div>`;
+}
+
+/* =====================================================================
+   MODALI
+   ===================================================================== */
+function closeModal() { document.getElementById("modal").innerHTML = ""; }
+
+function openModal(html) {
+  const m = document.getElementById("modal");
+  m.innerHTML = `<div class="overlay" data-action="overlay"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  const first = m.querySelector("[autofocus]");
+  if (first) setTimeout(() => first.focus(), 30);
+}
+
+/* ---------- prenotazione ---------- */
+let form = null;
+
+function openBooking(startMs) {
+  if (state.loadedWeek !== +state.weekStart) return;
+  const start = new Date(startMs);
+  form = { day: atTime(start, 0), start, minutes: 60, subject: "", repeat: "none", until: dateIso(addDays(start, 84)) };
+  fitDuration();
+  renderBooking();
+}
+
+function busyFor(s, e) {
+  return visibleEvents().find(ev => overlaps(s, e, ev.start, ev.end));
+}
+
+function durationAllowed(start, mins) {
+  const end = addMin(start, mins);
+  if (end > atTime(start, CONFIG.dayEnd)) return false;
+  return !busyFor(start, end);
+}
+
+function fitDuration() {
+  if (durationAllowed(form.start, form.minutes)) return;
+  const ok = DURATIONS.filter(m => durationAllowed(form.start, m));
+  if (ok.length) form.minutes = ok.filter(m => m < form.minutes).pop() || ok[0];
+}
+
+function renderBooking() {
+  const f = form;
+  const rows = (CONFIG.dayEnd - CONFIG.dayStart) * 60 / CONFIG.slotMinutes;
+  const now = new Date();
+  let opts = "";
+  for (let r = 0; r < rows; r++) {
+    const s = addMin(atTime(f.day, CONFIG.dayStart), r * CONFIG.slotMinutes);
+    if (addMin(s, CONFIG.slotMinutes) <= now) continue;
+    opts += `<option value="${s.getTime()}" ${+s === +f.start ? "selected" : ""}>${hhmm(s)}</option>`;
+  }
+  const anyOk = DURATIONS.some(m => durationAllowed(f.start, m));
+  const end = addMin(f.start, f.minutes);
+  const durs = DURATIONS.map(m => `<button type="button" class="dur ${m === f.minutes && anyOk ? "on" : ""}" data-action="dur" data-m="${m}"
+      ${durationAllowed(f.start, m) ? "" : "disabled"}>${durLabel(m)}</button>`).join("");
+  const blocker = !anyOk ? busyFor(f.start, addMin(f.start, CONFIG.slotMinutes)) : null;
+  const maxUntil = dateIso(addDays(new Date(), CONFIG.maxRecurrenceDays - 1));
+  const wd = DAY_NAMES[(f.day.getDay() + 6) % 7].toLowerCase();
+
+  openModal(`
+    <form id="bookform" autocomplete="off">
+      <div class="modal-head">
+        <div><h2>Prenota la sala</h2><div class="sub">${esc(longDate(f.day))}</div></div>
+        <button type="button" class="xbtn" data-action="close" aria-label="Chiudi">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="f-subject">Motivo della riunione</label>
+          <input type="text" id="f-subject" maxlength="120" placeholder="Es. Call con cliente DHL" value="${esc(f.subject)}" autofocus required>
+        </div>
+        <div class="field">
+          <label>Prenotato da</label>
+          <div class="readonly"><span class="avatar" style="width:24px;height:24px;font-size:11px;background:var(--brand);color:#fff">${esc(initials(state.me.name))}</span>${esc(state.me.name)}</div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="f-start">Inizio</label>
+            <select id="f-start">${opts}</select>
+          </div>
+          <div class="field">
+            <label>Fine</label>
+            <div class="readonly">${anyOk ? hhmm(end) : "—"}</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Durata</label>
+          <div class="durs">${durs}</div>
+          ${blocker ? `<div class="hint warn">Alle ${hhmm(f.start)} la sala è occupata (${esc(blocker.subject)}). Scegli un altro orario.</div>`
+                    : `<div class="hint">Le durate barrate non sono disponibili: sala già occupata o oltre le ${CONFIG.dayEnd}:00.</div>`}
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="f-repeat">Ripeti</label>
+            <select id="f-repeat">
+              <option value="none" ${f.repeat === "none" ? "selected" : ""}>Non ripetere</option>
+              <option value="weekly" ${f.repeat === "weekly" ? "selected" : ""}>Ogni ${wd}</option>
+              <option value="workdays" ${f.repeat === "workdays" ? "selected" : ""}>Ogni giorno lavorativo</option>
+            </select>
+          </div>
+          <div class="field" ${f.repeat === "none" ? 'style="visibility:hidden"' : ""}>
+            <label for="f-until">Fino al</label>
+            <input type="date" id="f-until" value="${esc(f.until)}" min="${dateIso(f.day)}" max="${maxUntil}">
+          </div>
+        </div>
+        ${f.repeat !== "none" ? `<div class="hint" style="margin-top:-6px">Se anche una sola data è già occupata, la sala rifiuta l'intera serie.</div>` : ""}
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-action="close">Annulla</button>
+        <button type="submit" class="btn primary" ${anyOk ? "" : "disabled"}>✓ Prenota</button>
+      </div>
+    </form>`);
+
+  const m = document.getElementById("modal");
+  m.querySelector("#f-subject").addEventListener("input", e => { form.subject = e.target.value; });
+  m.querySelector("#f-start").addEventListener("change", e => { form.start = new Date(+e.target.value); fitDuration(); keepSubject(); renderBooking(); });
+  m.querySelector("#f-repeat").addEventListener("change", e => { form.repeat = e.target.value; keepSubject(); renderBooking(); });
+  const u = m.querySelector("#f-until");
+  if (u) u.addEventListener("change", e => { form.until = e.target.value; });
+  m.querySelector("#bookform").addEventListener("submit", e => { e.preventDefault(); submitBooking(); });
+}
+
+function keepSubject() {
+  const el = document.getElementById("f-subject");
+  if (el) form.subject = el.value;
+}
+
+async function submitBooking() {
+  keepSubject();
+  const f = form;
+  const subject = f.subject.trim();
+  if (!subject) { toast("err", "Manca il motivo", "Scrivi il motivo della riunione."); document.getElementById("f-subject")?.focus(); return; }
+  const start = f.start, end = addMin(f.start, f.minutes);
+  if (start < new Date(Date.now() - 60000)) { toast("err", "Orario passato", "Scegli un orario futuro."); return; }
+
+  let recurrence = null;
+  if (f.repeat !== "none") {
+    const max = dateIso(addDays(new Date(), CONFIG.maxRecurrenceDays - 1));
+    if (!f.until || f.until < dateIso(start)) { toast("err", "Data di fine non valida", "Controlla il campo «Fino al»."); return; }
+    if (f.until > max) { toast("err", "Serie troppo lunga", `Si può prenotare al massimo fino al ${max.split("-").reverse().join(".")}.`); return; }
+    const wdName = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][start.getDay()];
+    recurrence = {
+      pattern: { type: "weekly", interval: 1, firstDayOfWeek: "monday",
+                 daysOfWeek: f.repeat === "weekly" ? [wdName] : ["monday","tuesday","wednesday","thursday","friday"] },
+      range: { type: "endDate", startDate: dateIso(start), endDate: f.until, recurrenceTimeZone: CONFIG.timeZone }
+    };
+  }
+
+  // ricontrollo aggiornato prima di inviare
+  const btn = document.querySelector("#bookform button[type=submit]");
+  if (btn) { btn.disabled = true; btn.textContent = "Verifico…"; }
+  await refresh();
+  const clash = busyFor(start, end);
+  if (clash) {
+    toast("err", "Orario appena occupato", `${clash.subject} (${hhmm(clash.start)}–${hhmm(clash.end)}). Scegli un altro orario.`);
+    renderBooking();
+    return;
+  }
+  closeModal();
+
+  const pend = { id: "pend-" + Date.now(), subject, start, end, allDay: false, organizerName: state.me.name, organizerEmail: state.me.emails[0] };
+  state.pending.push(pend);
   render();
-  setTimeout(() => { state.toast = null; render(); }, 3000);
+
+  const done = () => { state.pending = state.pending.filter(p => p !== pend); };
+  try {
+    const id = await api.create({ subject, start, end, recurrence });
+    let result = "pending";
+    for (let i = 0; i < 15 && result === "pending"; i++) {
+      await sleep(2000);
+      result = await api.roomResponse(id).catch(() => "pending");
+    }
+    done();
+    if (result === "accepted") {
+      toast("ok", "Prenotazione confermata!", `${subject} · ${longDate(start)}, ${hhmm(start)}–${hhmm(end)}. La trovi anche nel tuo calendario Outlook.`);
+    } else if (result === "declined") {
+      await api.discard(id).catch(() => {});
+      toast("err", "La sala ha rifiutato", recurrence ? "Almeno una delle date della serie è già occupata." : "L'orario risulta già occupato.");
+    } else {
+      toast("info", "Prenotazione inviata", "La conferma della sala sta arrivando: la prenotazione comparirà a breve.");
+    }
+  } catch (e) {
+    done();
+    toast("err", "Prenotazione non riuscita", friendlyError(e));
+  }
+  refresh();
 }
 
-async function handleBook() {
-  const { modal, form } = state;
-  if (!form.title || !form.person) return;
-  const dates = getWeekDates(state.weekOffset);
-  const dk = dates[modal.dayIdx].key;
+/* ---------- dettaglio / annullamento ---------- */
+function openDetail(id) {
+  const ev = visibleEvents().find(e => e.id === id);
+  if (!ev) return;
+  const mine = isMine(ev);
+  const canAdmin = state.isAdmin && !mine;
+  const past = ev.end <= new Date();
+  const when = ev.allDay ? "Tutto il giorno" : `${hhmm(ev.start)} – ${hhmm(ev.end)} (${durLabel(Math.round((ev.end - ev.start) / 60000))})`;
 
-  for (let s = modal.slot; s < modal.slot + form.duration; s++) {
-    if (getBooking(dates, modal.dayIdx, s)) {
-      showToast("Conflitto — slot già occupato!", "error");
+  let actions = `<button class="btn" data-action="close">Chiudi</button>`;
+  let note = "";
+  if (!past && mine) {
+    actions = ev.recurring && ev.seriesMasterId
+      ? `<button class="btn" data-action="close">Chiudi</button>
+         <button class="btn danger" data-action="cancel" data-id="${esc(ev.id)}" data-series="1">Annulla tutta la serie</button>
+         <button class="btn danger" data-action="cancel" data-id="${esc(ev.id)}">Annulla solo questa</button>`
+      : `<button class="btn" data-action="close">Chiudi</button>
+         <button class="btn danger" data-action="cancel" data-id="${esc(ev.id)}">Annulla prenotazione</button>`;
+  } else if (!past && canAdmin) {
+    note = `<div class="note">Sei amministratore: puoi liberare la sala. L'organizzatore <b>non riceve avviso</b> e la riunione resta nel suo calendario: conviene avvisarlo.</div>`;
+    actions = ev.recurring && ev.seriesMasterId
+      ? `<button class="btn" data-action="close">Chiudi</button>
+         <button class="btn danger" data-action="admindel" data-id="${esc(ev.id)}" data-series="1">Elimina serie</button>
+         <button class="btn danger" data-action="admindel" data-id="${esc(ev.id)}">Elimina questa</button>`
+      : `<button class="btn" data-action="close">Chiudi</button>
+         <button class="btn danger" data-action="admindel" data-id="${esc(ev.id)}">Elimina (admin)</button>`;
+  } else if (!past && !mine) {
+    note = `<div class="note">Solo chi ha prenotato può annullare. Ti serve la sala? ${ev.organizerEmail
+      ? `<a href="mailto:${esc(ev.organizerEmail)}?subject=${encodeURIComponent("Sala riunioni " + longDate(ev.start) + " " + hhmm(ev.start))}">Scrivi a ${esc(ev.organizerName)}</a>` : "Contatta l'organizzatore."}</div>`;
+  }
+
+  openModal(`
+    <div class="modal-head">
+      <div><h2>${esc(ev.subject)}</h2><div class="sub">${mine ? "La tua prenotazione" : "Sala occupata"}</div></div>
+      <button class="xbtn" data-action="close" aria-label="Chiudi">×</button>
+    </div>
+    <div class="modal-body">
+      <ul class="detail-list">
+        <li><span class="k">Giorno</span><span>${esc(longDate(ev.start))}</span></li>
+        <li><span class="k">Orario</span><span>${esc(when)}</span></li>
+        <li><span class="k">Prenotato da</span><span>${esc(ev.organizerName || "—")}</span></li>
+        ${ev.recurring ? `<li><span class="k">Ripetizione</span><span>Fa parte di una serie</span></li>` : ""}
+      </ul>
+      ${note}
+    </div>
+    <div class="modal-foot">${actions}</div>`);
+}
+
+async function doCancel(id, series, admin) {
+  const ev = visibleEvents().find(e => e.id === id);
+  if (!ev) return;
+  const what = series ? "tutta la serie" : "questa prenotazione";
+  if (!confirm(admin ? `Eliminare ${what} dal calendario della sala?\nL'organizzatore non verrà avvisato.` : `Annullare ${what}?`)) return;
+  closeModal();
+  const toHide = series && ev.seriesMasterId ? state.events.filter(e => e.seriesMasterId === ev.seriesMasterId) : [ev];
+  const exp = Date.now() + 90000;
+  toHide.forEach(e => state.hidden.set(e.id, exp));
+  render();
+  try {
+    if (admin) await api.adminDelete(ev, series); else await api.cancelMine(ev, series);
+    toast("ok", "Sala liberata", series ? "La serie è stata annullata." : `${ev.subject} è stata annullata.`);
+  } catch (e) {
+    toHide.forEach(x => state.hidden.delete(x.id));
+    toast("err", "Annullamento non riuscito", friendlyError(e));
+  }
+  render();
+  setTimeout(refresh, 4000);
+}
+
+/* ---------- toast ---------- */
+function toast(kind, title, text) {
+  const box = document.getElementById("toasts");
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.innerHTML = `<span>${kind === "ok" ? "✓" : kind === "err" ? "⚠" : "ℹ"}</span><span><b>${esc(title)}</b>${esc(text || "")}</span>`;
+  box.appendChild(el);
+  setTimeout(() => el.remove(), kind === "err" ? 8000 : 5500);
+}
+
+/* =====================================================================
+   EVENTI UI
+   ===================================================================== */
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-action]");
+  if (!t) return;
+  const a = t.dataset.action;
+  if (a === "overlay" && e.target !== t) return;
+  switch (a) {
+    case "login":  msalApp.loginRedirect({ scopes: SCOPES, prompt: "select_account" }); break;
+    case "logout": msalApp.logoutRedirect({ account, postLogoutRedirectUri: redirectUri() }); break;
+    case "prev":   state.weekStart = addDays(state.weekStart, -7); state.events = []; render(); refresh(); break;
+    case "next":   state.weekStart = addDays(state.weekStart, 7);  state.events = []; render(); refresh(); break;
+    case "today":
+      state.weekStart = mondayOf(new Date());
+      state.mobileDay = Math.min((new Date().getDay() + 6) % 7, 4);
+      render(); refresh(); break;
+    case "day":    state.mobileDay = +t.dataset.d; render(); break;
+    case "book":   openBooking(+t.dataset.t); break;
+    case "dur":    keepSubject(); form.minutes = +t.dataset.m; renderBooking(); break;
+    case "detail": openDetail(t.dataset.id); break;
+    case "cancel": doCancel(t.dataset.id, !!t.dataset.series, false); break;
+    case "admindel": doCancel(t.dataset.id, !!t.dataset.series, true); break;
+    case "close": case "overlay": closeModal(); break;
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+/* =====================================================================
+   AVVIO
+   ===================================================================== */
+async function start() {
+  if (!DEMO) {
+    if (location.protocol === "file:") {
+      document.getElementById("app").innerHTML = `
+        <div class="login"><div class="login-card">
+          <div class="lm" style="color:#fff">${ICON_CAL}</div>
+          <h1>Sala Riunioni</h1>
+          <p>Questo file è stato aperto dal computer.<br>L'app funziona solo dall'indirizzo ufficiale:</p>
+          <a class="msbtn" style="text-decoration:none;color:var(--brand)" href="https://sstaletti-eng.github.io/Sala-Riunioni/">Apri la Sala Riunioni</a>
+          <div class="small">Per vedere la demo: aggiungi <b>?demo</b> in fondo all'indirizzo.</div>
+        </div></div>`;
       return;
     }
-  }
-
-  state.syncing = true; render();
-  const data = { title: form.title, person: form.person, duration: form.duration, startSlot: modal.slot, createdAt: new Date().toISOString() };
-  for (let s = modal.slot; s < modal.slot + form.duration; s++) {
-    await fbPut("bookings/" + dk + "/" + s, data);
-    state.bookings[dk + "/" + s] = data;
-  }
-  state.syncing = false;
-  state.modal = null;
-  showToast("Prenotazione confermata!");
-}
-
-async function handleDelete() {
-  const { selected } = state;
-  const dates = getWeekDates(state.weekOffset);
-  const dk = dates[selected.dayIdx].key;
-  state.syncing = true; render();
-  for (let s = selected.startSlot; s < selected.startSlot + selected.duration; s++) {
-    await fbDelete("bookings/" + dk + "/" + s);
-    delete state.bookings[dk + "/" + s];
-  }
-  state.syncing = false;
-  state.selected = null;
-  showToast("Prenotazione eliminata!");
-}
-
-// =====================================================
-// RENDER
-// =====================================================
-function render() {
-  const dates = getWeekDates(state.weekOffset);
-  const totalSlots = SLOT_COUNT * 5;
-  let freeSlots = 0;
-  dates.forEach((d, di) => { SLOTS.forEach(s => { if (!getBooking(dates, di, s)) freeSlots++; }); });
-  const pct = Math.round(((totalSlots - freeSlots) / totalSlots) * 100);
-
-  let html = "";
-
-  // Toast
-  if (state.toast) {
-    html += '<div class="toast ' + state.toast.type + '">' + (state.toast.type === "error" ? "⚠️ " : "✅ ") + state.toast.message + '</div>';
-  }
-
-  // Header
-  html += '<div class="header"><div>';
-  html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
-  html += '<h1>🏢 Sala Riunioni Chiasso</h1>';
-  html += state.syncing
-    ? '<span class="status" style="background:rgba(255,255,255,0.15)">⏳ Sincronizzazione...</span>'
-    : '<span class="status">🟢 Online</span>';
-  html += '</div>';
-  html += '<p class="subtitle">Spedimar SAGL · ' + freeSlots + ' slot liberi · Occupazione: ' + pct + '%</p>';
-  html += '</div>';
-  html += '<div class="nav-controls">';
-  html += '<div class="legend">';
-  html += '<div class="legend-dot" style="background:#E8F5E9;border:1px solid #A5D6A7"></div><span>Libero</span>';
-  html += '<div class="legend-dot" style="background:#FFCDD2;border:1px solid #EF9A9A;margin-left:6px"></div><span>Occupato</span>';
-  html += '</div>';
-  html += '<button class="nav-btn" onclick="changeWeek(-1)">‹</button>';
-  html += '<button class="nav-btn today" onclick="changeWeek(0)">Oggi</button>';
-  html += '<button class="nav-btn" onclick="changeWeek(1)">›</button>';
-  html += '</div></div>';
-
-  if (state.loading) {
-    html += '<div class="loading"><div class="icon">⏳</div><div>Caricamento prenotazioni...</div></div>';
-  } else {
-    // Calendar
-    html += '<div class="calendar"><div class="cal-grid">';
-    html += '<div class="cal-header-empty"></div>';
-    dates.forEach((d, i) => {
-      const td = isToday(d.date) ? " today" : "";
-      html += '<div class="cal-header' + td + '">';
-      html += '<div class="day-name">' + d.name + '</div>';
-      html += '<div class="day-num">' + d.label + '</div>';
-      html += '</div>';
+    if (typeof msal === "undefined") { renderLogin("Impossibile caricare il modulo di accesso Microsoft. Controlla la connessione e ricarica."); return; }
+    msalApp = new msal.PublicClientApplication({
+      auth: { clientId: CONFIG.clientId, authority: `https://login.microsoftonline.com/${CONFIG.tenantId}`, redirectUri: redirectUri() },
+      cache: { cacheLocation: "localStorage" }
     });
-
-    SLOTS.forEach(slot => {
-      const hourStart = isHourStart(slot);
-      const timeLabel = slotToTime(slot);
-      const labelClass = hourStart ? 'time-label' : 'time-label half';
-      html += '<div class="' + labelClass + '">' + timeLabel + '</div>';
-      dates.forEach((d, di) => {
-        const booking = getBooking(dates, di, slot);
-        const start = isStartSlot(dates, di, slot);
-        const slotClass = booking ? "slot busy" : "slot free";
-        const halfClass = hourStart ? "" : " half-slot";
-        html += '<div class="' + slotClass + halfClass + '" onclick="cellClick(' + di + ',' + slot + ')">';
-        if (start) {
-          const h = start.duration * 32 - 4;
-          const endTime = slotToTime(start.startSlot + start.duration);
-          const startTime = slotToTime(start.startSlot);
-          html += '<div class="booking-card" style="height:' + h + 'px">';
-          html += '<div class="title">' + esc(start.title) + '</div>';
-          html += '<div class="info">' + esc(start.person) + ' · ' + startTime + '–' + endTime;
-          html += '</div></div>';
-        }
-        html += '</div>';
-      });
-    });
-    html += '</div></div>';
+    await msalApp.initialize();
+    try {
+      const resp = await msalApp.handleRedirectPromise();
+      if (resp?.account) msalApp.setActiveAccount(resp.account);
+    } catch (e) {
+      renderLogin("Accesso non riuscito: " + (e.errorMessage || e.message));
+      return;
+    }
+    account = msalApp.getActiveAccount() || msalApp.getAllAccounts()[0] || null;
+    if (!account) { renderLogin(); return; }
+    msalApp.setActiveAccount(account);
   }
-
-  // Booking Modal
-  if (state.modal) {
-    const m = state.modal;
-    html += '<div class="overlay" onclick="closeModal()">';
-    html += '<div class="modal" onclick="event.stopPropagation()">';
-    html += '<h2>✏️ Nuova Prenotazione</h2>';
-    html += '<p class="modal-sub">' + dates[m.dayIdx].name + ' ' + dates[m.dayIdx].label + ' · ore ' + slotToTime(m.slot) + '</p>';
-    html += '<label>Motivo della riunione</label>';
-    html += '<input type="text" id="inp-title" placeholder="Es. Call con cliente" value="' + esc(state.form.title) + '" oninput="updateForm(\'title\', this.value)" autofocus />';
-    html += '<label>Prenotato da</label>';
-    html += '<input type="text" id="inp-person" placeholder="Es. Marco Rossi" value="' + esc(state.form.person) + '" oninput="updateForm(\'person\', this.value)" />';
-    html += '<label>Durata</label><div class="duration-btns">';
-    // Duration in slots: 1=30min, 2=1h, 3=1h30, 4=2h, 6=3h, 8=4h
-    [
-      { slots: 1, label: "30min" },
-      { slots: 2, label: "1h" },
-      { slots: 3, label: "1h30" },
-      { slots: 4, label: "2h" },
-      { slots: 6, label: "3h" },
-      { slots: 8, label: "4h" },
-    ].forEach(d => {
-      const act = state.form.duration === d.slots ? " active" : "";
-      html += '<button class="dur-btn' + act + '" onclick="updateForm(\'duration\',' + d.slots + ')">' + d.label + '</button>';
-    });
-    html += '</div>';
-    html += '<div class="modal-actions">';
-    html += '<button class="btn-cancel" onclick="closeModal()">Annulla</button>';
-    const dis = (!state.form.title || !state.form.person || state.syncing) ? " disabled" : "";
-    html += '<button class="btn-book"' + dis + ' onclick="handleBook()">' + (state.syncing ? '⏳ Salvo...' : '✓ Prenota') + '</button>';
-    html += '</div></div></div>';
+  try {
+    state.me = await api.me();
+  } catch (e) {
+    renderLogin(friendlyError(e));
+    return;
   }
-
-  // Detail Modal
-  if (state.selected) {
-    const s = state.selected;
-    html += '<div class="overlay" onclick="closeDetail()">';
-    html += '<div class="modal" onclick="event.stopPropagation()">';
-    html += '<div class="detail-card">';
-    html += '<div class="title">' + esc(s.title) + '</div>';
-    html += '<div class="info">' + (dates[s.dayIdx]?.name || "") + ' · ' + slotToTime(s.startSlot) + ' – ' + slotToTime(s.startSlot + s.duration) + '</div>';
-    html += '<div class="info">👤 ' + esc(s.person) + '</div>';
-    html += '</div>';
-    html += '<div class="modal-actions">';
-    html += '<button class="btn-cancel" onclick="closeDetail()">Chiudi</button>';
-    html += '<button class="btn-delete" onclick="handleDelete()">' + (state.syncing ? '⏳ Elimino...' : '🗑 Elimina') + '</button>';
-    html += '</div></div></div>';
-  }
-
-  document.getElementById("app").innerHTML = html;
-}
-
-function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-
-// =====================================================
-// EVENT HANDLERS
-// =====================================================
-function changeWeek(dir) {
-  if (dir === 0) state.weekOffset = 0;
-  else state.weekOffset += dir;
-  loadWeek();
-}
-
-function cellClick(dayIdx, slot) {
-  const dates = getWeekDates(state.weekOffset);
-  const booking = getBooking(dates, dayIdx, slot);
-  if (booking) {
-    state.selected = { ...booking, dayIdx };
-    render();
-  } else {
-    state.modal = { dayIdx, slot };
-    state.form = { title: "", person: "", duration: 2 };
-    render();
-    setTimeout(() => { const el = document.getElementById("inp-title"); if (el) el.focus(); }, 50);
-  }
-}
-
-function updateForm(key, val) {
-  state.form[key] = val;
-  if (key === "duration") render();
-}
-
-function closeModal() { state.modal = null; render(); }
-function closeDetail() { state.selected = null; render(); }
-
-// =====================================================
-// INIT
-// =====================================================
-loadWeek();
-
-// Auto-refresh every 30 seconds
-setInterval(async () => {
-  if (state.modal || state.selected || state.syncing) return;
-  const dates = getWeekDates(state.weekOffset);
-  const bookings = {};
-  for (const day of dates) {
-    const data = await fbGet("bookings/" + day.key);
-    if (data) Object.entries(data).forEach(([h, b]) => { bookings[day.key + "/" + h] = b; });
-  }
-  state.bookings = bookings;
+  const admins = CONFIG.admins.map(s => s.toLowerCase());
+  state.isAdmin = DEMO || state.me.emails.some(m => admins.includes(m));
   render();
-}, 30000);
+  await refresh();
+
+  setInterval(() => { if (document.visibilityState === "visible") refresh(); }, CONFIG.refreshSeconds * 1000);
+  setInterval(() => { if (!document.querySelector(".overlay")) render(); }, 60000); // linea "adesso" e slot passati
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
+}
+
+start();
 </script>
 </body>
 </html>
